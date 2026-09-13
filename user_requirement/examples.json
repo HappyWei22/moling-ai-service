@@ -1,0 +1,180 @@
+[
+  {
+    "id": "UR-01",
+    "category": "normal",
+    "input": "我是老师，平时需要写课堂板书，每天练15分钟，想练行楷。",
+    "expected": {
+      "occupation": "教师",
+      "scene": "课堂板书",
+      "style": "行楷",
+      "duration_minutes": 15,
+      "goal": null,
+      "exclusions": [],
+      "status": "complete",
+      "follow_up": null,
+      "errors": []
+    }
+  },
+  {
+    "id": "UR-02",
+    "category": "normal",
+    "input": "我是学生，平时写作业，每天练5分钟，想练楷书。",
+    "expected": {
+      "occupation": "学生",
+      "scene": "作业",
+      "style": "楷书",
+      "duration_minutes": 5,
+      "goal": null,
+      "exclusions": [],
+      "status": "complete",
+      "follow_up": null,
+      "errors": []
+    }
+  },
+  {
+    "id": "UR-03",
+    "category": "missing",
+    "input": "我是老师，每天15分钟。",
+    "expected": {
+      "occupation": "教师",
+      "scene": null,
+      "style": null,
+      "duration_minutes": 15,
+      "goal": null,
+      "exclusions": [],
+      "status": "needs_clarification",
+      "follow_up": "你主要在哪种场景使用这套字帖，并想练哪种书体？",
+      "errors": []
+    }
+  },
+  {
+    "id": "UR-04",
+    "category": "missing",
+    "input": "我是学生，主要写作业，想练楷书。",
+    "expected": {
+      "occupation": "学生",
+      "scene": "作业",
+      "style": "楷书",
+      "duration_minutes": null,
+      "goal": null,
+      "exclusions": [],
+      "status": "needs_clarification",
+      "follow_up": "你每次大约想练几分钟？目前可以按5、15或30分钟来规划。",
+      "errors": []
+    }
+  },
+  {
+    "id": "UR-05",
+    "category": "missing",
+    "input": "我每天练15分钟，主要用于课堂板书。",
+    "expected": {
+      "occupation": null,
+      "scene": "课堂板书",
+      "style": null,
+      "duration_minutes": 15,
+      "goal": null,
+      "exclusions": [],
+      "status": "needs_clarification",
+      "follow_up": "你的职业或身份是什么？另外想练哪种书体？",
+      "errors": []
+    }
+  },
+  {
+    "id": "UR-06",
+    "category": "missing",
+    "input": "我想练行书，目标是让字写得更工整。",
+    "expected": {
+      "occupation": null,
+      "scene": null,
+      "style": "行书",
+      "duration_minutes": null,
+      "goal": "让字写得更工整",
+      "exclusions": [],
+      "status": "needs_clarification",
+      "follow_up": "你主要在哪种场景使用这套字帖？每次大约想练几分钟？",
+      "errors": []
+    }
+  },
+  {
+    "id": "UR-07",
+    "category": "missing",
+    "input": "我是老师，主要写课堂板书。",
+    "expected": {
+      "occupation": "教师",
+      "scene": "课堂板书",
+      "style": null,
+      "duration_minutes": null,
+      "goal": null,
+      "exclusions": [],
+      "status": "needs_clarification",
+      "follow_up": "你想练哪种书体？每次大约想练几分钟？",
+      "errors": []
+    }
+  },
+  {
+    "id": "UR-08",
+    "category": "conflict",
+    "input": "我想练行书，但目前系统只支持楷书。",
+    "expected": {
+      "occupation": null,
+      "scene": null,
+      "style": "行书",
+      "duration_minutes": null,
+      "goal": null,
+      "exclusions": [],
+      "status": "conflict",
+      "follow_up": "你希望练行书，但当前系统只支持楷书。是否先改用楷书？",
+      "errors": [
+        {
+          "type": "unsupported_style",
+          "field": "style",
+          "value": "行书"
+        }
+      ]
+    }
+  },
+  {
+    "id": "UR-09",
+    "category": "invalid",
+    "input": "我是学生，每天练-10分钟，想练楷书。",
+    "expected": {
+      "occupation": "学生",
+      "scene": null,
+      "style": "楷书",
+      "duration_minutes": -10,
+      "goal": null,
+      "exclusions": [],
+      "status": "invalid",
+      "follow_up": "练习时长必须是正数，请重新告诉我每次想练几分钟。",
+      "errors": [
+        {
+          "type": "invalid_value",
+          "field": "duration_minutes",
+          "value": -10
+        }
+      ]
+    }
+  },
+  {
+    "id": "UR-10",
+    "category": "invalid",
+    "input": "我是老师，平时写课堂板书，每天练15分钟，想练草书。",
+    "expected": {
+      "occupation": "教师",
+      "scene": "课堂板书",
+      "style": null,
+      "duration_minutes": 15,
+      "goal": null,
+      "exclusions": [],
+      "status": "invalid",
+      "follow_up": "当前 v0 暂支持楷书、行书和行楷，请选择其中一种书体。",
+      "errors": [
+        {
+          "type": "unsupported_style_value",
+          "field": "style",
+          "value": "草书"
+        }
+      ]
+    }
+  }
+]

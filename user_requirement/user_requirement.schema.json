@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "UserRequirement",
+  "description": "墨灵 v0 用户自然语言练字需求结构",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "occupation": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "用户明确表达的职业或身份"
+    },
+    "scene": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "用户明确表达的书写场景"
+    },
+    "style": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "楷书",
+        "行书",
+        "行楷",
+        null
+      ],
+      "description": "用户明确要求的书体；null表示用户未说明"
+    },
+    "duration_minutes": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1,
+      "description": "单次练习时长，单位为分钟；用户未说明时为null"
+    },
+    "goal": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "用户明确表达的练习目标"
+    },
+    "exclusions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "用户明确要求排除的内容或条件；无排除项时为[]"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "complete",
+        "needs_clarification",
+        "conflict",
+        "invalid"
+      ],
+      "description": "解析状态"
+    },
+    "follow_up": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "需要用户补充或确认时的追问"
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "field": {
+            "type": "string"
+          },
+          "value": {}
+        },
+        "required": [
+          "type",
+          "field"
+        ]
+      },
+      "description": "解析或业务校验错误；无错误时为[]"
+    }
+  },
+  "required": [
+    "occupation",
+    "scene",
+    "style",
+    "duration_minutes",
+    "goal",
+    "exclusions",
+    "status",
+    "follow_up",
+    "errors"
+  ]
+}
