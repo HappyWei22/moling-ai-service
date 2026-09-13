@@ -1,22 +1,26 @@
-from pydantic import ValidationError
-
 from schemas import UserRequirement
 from ai_service import generate_plan
 
 
 try:
-    user_data = UserRequirement(duration_minutes=15)
-    result = generate_plan(user_data)
-except ValidationError as error:
-    print("数据校验失败：")
-    print(error)
+    requirement = UserRequirement(
+        occupation="教师",
+        scene=None,
+        style="楷书",
+        duration_minutes=15,
+        goal=None,
+        exclusions=[],
+        status="complete",
+        follow_up=None,
+        errors=[],
+    )
+
+
+    result = generate_plan(requirement)
+
+except ValueError as error:
+    print("不能生成：", error)
+
 else:
     print("计划生成成功：")
-    print(result)
-
-    plan_dict = result.model_dump()
-    print(plan_dict)
-
-    plan_json = result.model_dump_json(indent=2)
-    print(plan_json)
-    print(type(plan_json))
+    print(result.model_dump_json(indent=2))
