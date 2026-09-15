@@ -1,0 +1,60 @@
+{
+	  "$schema": "http://json-schema.org/draft-07/schema#",
+	  "title": "练字计划",
+	  "description": "练字计划数据规范，用于校验练字计划 JSON 数据的结构与内容。本版本不含评测字段。",
+	  "type": "object",
+	  "properties": {
+	    "plan_name": {
+	      "type": "string",
+	      "title": "计划名称",
+	      "description": "练字计划的名称，如：百日百字打卡计划"
+	    },
+	    "duration_minutes": {
+	      "type": "integer",
+	      "title": "计划时长（分钟）",
+	      "description": "单次练字时长，仅允许 5、15、30 三个值",
+	      "enum": [5, 15, 30]
+	    },
+	    "is_mock": {
+	      "type": "boolean",
+	      "title": "是否为假数据",
+	      "description": "标识本条数据是否为模拟/测试数据",
+	      "default": false
+	    },
+	    "items": {
+	      "type": "array",
+	      "title": "练习条目列表",
+	      "description": "练字计划包含的具体练习条目",
+	      "items": {
+	        "type": "object",
+	        "title": "练习条目",
+	        "properties": {
+	          "text": {
+	            "type": "string",
+	            "title": "练习字词",
+	            "description": "本次要练习的字或词"
+	          },
+	          "repeat": {
+	            "type": "integer",
+	            "title": "练习次数",
+	            "description": "该条目需要练习的次数",
+	            "minimum": 1
+	          },
+	          "task_type": {
+	            "type": "string",
+	            "title": "任务类型",
+	            "description": "练习任务类型，仅允许：描红、临摹、默写、纠错",
+	            "enum": ["描红", "临摹", "默写", "纠错"]
+	          },
+	          "instruction": {
+	            "type": "string",
+	            "title": "指导语",
+	            "description": "给用户的练习指导语"
+	          }
+	        },
+	        "required": ["text", "repeat", "task_type", "instruction"]
+	      }
+	    }
+	  },
+	  "required": ["plan_name", "duration_minutes", "is_mock", "items"]
+}

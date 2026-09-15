@@ -1,0 +1,53 @@
+[
+  {
+    "case": "非标准时长",
+    "input_change": {
+      "duration_minutes": 20
+    },
+    "expected": "RequirementNotReadyError / HTTP 422"
+  },
+  {
+    "case": "尚未支持的排除要求",
+    "input_change": {
+      "exclusions": [
+        "不要生僻字"
+      ]
+    },
+    "expected": "RequirementNotReadyError / HTTP 422"
+  },
+  {
+    "case": "输出无条目",
+    "output_change": {
+      "items": []
+    },
+    "expected": "ValidationError"
+  },
+  {
+    "case": "非临摹形式",
+    "item_change": {
+      "task_type": "描红"
+    },
+    "expected": "ValidationError"
+  },
+  {
+    "case": "负数次数",
+    "item_change": {
+      "repeat": -1
+    },
+    "expected": "ValidationError"
+  },
+  {
+    "case": "空文字",
+    "item_change": {
+      "text": ""
+    },
+    "expected": "ValidationError"
+  },
+  {
+    "case": "分隔符混入文字",
+    "item_change": {
+      "text": "重点、例题"
+    },
+    "expected": "ValidationError"
+  }
+]

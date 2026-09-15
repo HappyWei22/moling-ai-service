@@ -1,0 +1,68 @@
+[
+  {
+    "schema_version": "0.3",
+    "plan_id": "8cd1bf5c-3b1c-4695-ba62-9d2e15f67d27",
+    "plan_name": "临摹字帖联调样例",
+    "style": "楷书",
+    "duration_minutes": 5,
+    "is_mock": true,
+    "items": [
+      {
+        "text": "课堂",
+        "repeat": 3,
+        "task_type": "临摹",
+        "instruction": "观察范字，注意字的大小和间距。"
+      },
+      {
+        "text": "学习",
+        "repeat": 3,
+        "task_type": "临摹",
+        "instruction": "观察范字，注意字的大小和间距。"
+      }
+    ]
+  },
+  {
+    "schema_version": "0.3",
+    "plan_id": "9fe08366-39a8-4072-a52d-f959ef911a38",
+    "plan_name": "临摹字帖联调样例",
+    "style": "楷书",
+    "duration_minutes": 15,
+    "is_mock": true,
+    "items": [
+      {
+        "text": "课堂",
+        "repeat": 9,
+        "task_type": "临摹",
+        "instruction": "观察范字，注意字的大小和间距。"
+      },
+      {
+        "text": "学习",
+        "repeat": 9,
+        "task_type": "临摹",
+        "instruction": "观察范字，注意字的大小和间距。"
+      }
+    ]
+  },
+  {
+    "schema_version": "0.3",
+    "plan_id": "8c637d6f-eb81-4506-8970-a8fa0e175afe",
+    "plan_name": "临摹字帖联调样例",
+    "style": "楷书",
+    "duration_minutes": 30,
+    "is_mock": true,
+    "items": [
+      {
+        "text": "课堂",
+        "repeat": 18,
+        "task_type": "临摹",
+        "instruction": "观察范字，注意字的大小和间距。"
+      },
+      {
+        "text": "学习",
+        "repeat": 18,
+        "task_type": "临摹",
+        "instruction": "观察范字，注意字的大小和间距。"
+      }
+    ]
+  }
+]

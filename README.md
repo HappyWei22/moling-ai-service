@@ -5,8 +5,8 @@
 接收 UserRequirement 对象，返回 WorksheetPlan 对象。
 目前使用固定假数据，尚未接入真实大模型。
 输入已接入 UserRequirement v0.3 约定及生成前检查。
-输出仍为教学版 WorksheetPlan，尚未接入任务三的正式计划协议。
-当前不验证模拟内容是否满足书体、场景、目标和排除项，也不包含 AI 评测或打分。
+输出已接入 WorksheetPlan v0.3 修订稿，仅支持临摹，尚待队友复核。
+输出书体和时长沿用输入，按暂定字格配额生成固定假数据；尚未实现职业/场景/目标选词，非空排除项暂时拒绝。不包含 AI 评测或打分。
 
 ## 文件说明
 
@@ -158,13 +158,30 @@ python -m uvicorn main:app --reload
 }
 ```
 
-成功时返回 200，当前固定模拟响应为：
+成功时返回 200，当前模拟响应示例（plan_id 每次生成不同）：
 
 ```json
 {
+  "schema_version": "0.3",
+  "plan_id": "9fe08366-39a8-4072-a52d-f959ef911a38",
+  "plan_name": "临摹字帖联调样例",
+  "style": "楷书",
   "duration_minutes": 15,
   "is_mock": true,
-  "items": [{"text": "教师", "repeat": 3}]
+  "items": [
+    {
+      "text": "课堂",
+      "repeat": 9,
+      "task_type": "临摹",
+      "instruction": "观察范字，注意字的大小和间距。"
+    },
+    {
+      "text": "学习",
+      "repeat": 9,
+      "task_type": "临摹",
+      "instruction": "观察范字，注意字的大小和间距。"
+    }
+  ]
 }
 ```
 
@@ -174,13 +191,47 @@ python -m uvicorn main:app --reload
 {
   "detail": {
     "code": "REQUIREMENT_NOT_READY",
-    "message": "职业、使用场景、练习目标至少需要明确一项"
+    "message": "职业、使用场景、练习目标至少需要明确一项",
+    "fields": []
   }
 }
 ```
 
 模块通过 `RequirementNotReadyError` 报告需求未就绪；调试入口将其映射为上述 HTTP 响应。
-字段缺失或类型错误仍使用 FastAPI 默认的 422 错误列表，与业务错误格式尚未统一。
+### 统一的 422 错误格式
+
+字段缺失、类型错误、非法值及无法解析的 JSON 均返回 `VALIDATION_ERROR`。
+例如把完整请求中的 `duration_minutes` 改为 `"abc"`：
+
+```json
+{
+  "detail": {
+    "code": "VALIDATION_ERROR",
+    "message": "请求字段不符合要求",
+    "fields": [
+      {
+        "field": "duration_minutes",
+        "message": "Input should be a valid integer, unable to parse string as an integer"
+      }
+    ]
+  }
+}
+```
+
+两类错误均返回 HTTP 422，统一包含：
+
+- `detail.code`：错误码，供调用方判断错误类型。
+- `detail.message`：整体错误说明，供调用方展示。
+- `detail.fields`：字段错误列表；需求未就绪时为 `[]`。
+
+字段路径移除开头的 `body`，嵌套位置用点连接（例如 `exclusions.0`）；
+请求体整体错误使用 `body`，JSON 解析错误的位置可能是数字偏移。
+字段级 `message` 沿用校验库的原始说明，可能为英文；调用方应按 `code` 分支，不要依赖说明文字。
+响应不回传校验库的原始 `input` 或 `ctx`。`/docs` 的 422 响应模型也已同步。
+此约定覆盖请求校验和需求未就绪，不将服务内部错误或输出校验失败伪装成 422。
+
+**调用方迁移**：旧版字段错误的 `detail` 是列表，现在统一为对象；
+请改为读取 `detail.message`，字段明细读取 `detail.fields`。
 
 ## UserRequirement v0.3 接入验证
 
@@ -191,7 +242,7 @@ python -m uvicorn main:app --reload
 - 书体和练习时长必须明确。
 - 职业、场景、目标至少一项包含非空白文字。
 
-模型要求时长为正整数或 `null`；目前尚未在规划入口限制为 5/15/30 分钟，也未验证字体资源的实际支持情况。
+需求模型允许正整数或 `null`，规划入口仅接受 5/15/30 分钟，不自动映射；非空 exclusions 暂时拒绝。字体资源的实际支持情况仍待确认。
 
 激活虚拟环境后运行：
 
@@ -219,8 +270,42 @@ Windows 不激活环境时运行：
 
 ## 尚未完成
 
-- 接入正式 WorksheetPlan、训练量规则与输出需求符合性检查。
+- 复核 WorksheetPlan v0.3 修订稿并实练校准字格配额；接入真实候选内容及排除过滤。
 - 与团队确认错误格式、版本约定及接口契约。
 - 提供可替换的模型调用入口。
 - 补充更多边界验证并整理旧版练习文件。
 - 请另一名成员独立运行并复核本轮版本。
+
+## WorksheetPlan v0.3 修订与验证
+
+修订资料在 WorkSheetPlan/；原文件在 WorkSheetPlan/history/original-v0.2/，不再用于当前接口。
+新 Schema 为 worksheet_plan.schema.json，正常样例为 plans.json，异常测试说明为异常样例.json。
+规则详见训练量规则.md。text 每项是一个字或词，repeat 为整项重复次数；仅临摹，instruction 可选。
+当前暂定 5/15/30 分钟分别为 12/36/72 个填写字格，不含范字；这只是联调假设，不是经过教学验证的耗时保证。
+总格数约束由 Python 校验器执行，纯 JSON Schema 无法覆盖该跨字段规则。
+
+```bash
+python -m unittest -v test_worksheet_plan
+python check_examples.py
+```
+
+本轮本机验证：5 个输出测试方法（含多种边界子案例）通过，原 10 组需求样例仍全部通过。
+另检查了调试路由函数的正常返回、20 分钟的 422 映射及 OpenAPI 生成；未重新进行真实浏览器 HTTP 或 Windows 验证。
+本轮未更新分享 ZIP，旧 ZIP 不包含这些修改。
+
+## 维护输出 JSON Schema
+
+以 schemas.py 的 WorksheetPlan / WorksheetItem 为唯一生成来源，不直接修改导出的 JSON。
+模型中声明了 JSON Schema 2020-12 标准版本、模型说明和各字段的中文名称与解释。
+$schema 是格式标准版本，schema_version 是业务协议版本；$defs 存放复用结构，$ref 引用它。
+
+修改模型后运行（已激活虚拟环境，Windows/macOS 相同）：
+
+```bash
+python export_schemas.py
+python export_schemas.py --check
+```
+
+第一条只更新 WorkSheetPlan/worksheet_plan.schema.json，不覆盖同学一的原始协议或历史文件。
+第二条不写文件，若导出内容过期则以非零状态退出。无需安装新依赖。
+字段展示名称、description 和 $comment 仅为说明；字格总量等 Python 业务校验仍需执行，不能只依赖 JSON Schema。

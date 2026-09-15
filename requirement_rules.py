@@ -31,3 +31,9 @@ def check_requirement_ready(requirement: UserRequirement) -> None:
 
     if not has_personalization:
         raise RequirementNotReadyError("职业、使用场景、练习目标至少需要明确一项")
+
+    if requirement.duration_minutes not in (5, 15, 30):
+        raise RequirementNotReadyError("当前仅支持 5、15、30 分钟，不自动修改用户时长")
+
+    if requirement.exclusions:
+        raise RequirementNotReadyError("当前模拟生成器尚不能可靠处理排除要求，请等待内容筛选接入")
