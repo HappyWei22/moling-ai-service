@@ -2,9 +2,11 @@ import copy
 import json
 import unittest
 from pathlib import Path
+from unittest.mock import Mock
 from pydantic import ValidationError
 from schemas import UserRequirement, WorksheetPlan
 from ai_service import generate_plan
+from plan_generators import mock_generate
 from requirement_rules import RequirementNotReadyError
 
 
@@ -16,6 +18,42 @@ def requirement(**changes):
 
 
 class PlanTests(unittest.TestCase):
+    def test_replaceable_generator(self):
+        req = requirement()
+        raw = mock_generate(req)
+        raw['plan_name'] = '替换生成器样例'
+        raw['items'][0]['text'] = '板书'
+        generator = Mock(return_value=raw)
+        plan = generate_plan(req, generator=generator)
+        generator.assert_called_once_with(req)
+        self.assertIsInstance(plan, WorksheetPlan)
+        self.assertEqual(plan.plan_name, '替换生成器样例')
+        self.assertEqual(plan.items[0].text, '板书')
+
+    def test_invalid_generator_output(self):
+        for changes in [dict(items=[]), dict(schema_version='0.2')]:
+            with self.subTest(changes=changes):
+                generator = Mock(return_value=mock_generate(requirement()) | changes)
+                with self.assertRaises(ValidationError):
+                    generate_plan(requirement(), generator=generator)
+
+    def test_generator_cannot_change_constraints(self):
+        for changes in [dict(style='行书'), dict(duration_minutes=5)]:
+            with self.subTest(changes=changes):
+                raw = mock_generate(requirement(**changes))
+                with self.assertRaisesRegex(ValueError, '书体和时长'):
+                    generate_plan(requirement(), generator=Mock(return_value=raw))
+
+    def test_unready_requirement_does_not_call_generator(self):
+        generator = Mock()
+        with self.assertRaises(RequirementNotReadyError):
+            generate_plan(requirement(status='needs_clarification'), generator=generator)
+        generator.assert_not_called()
+
+    def test_generator_failure_propagates(self):
+        with self.assertRaises(TimeoutError):
+            generate_plan(requirement(), generator=Mock(side_effect=TimeoutError('超时')))
+
     def test_budgets_styles_and_ids(self):
         for duration, count in [(5, 12), (15, 36), (30, 72)]:
             for style in ['楷书', '行书', '行楷']:
