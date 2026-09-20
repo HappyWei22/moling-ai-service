@@ -18,6 +18,7 @@
 - user_requirement/需求字段说明_v0.3.md：新版需求说明；同目录旧版文件仅供历史参考
 - main.py：FastAPI 调试入口，含 `POST /plan` 与 `POST /parse`
 - parsing/：第 3 周需求解析（提示词、模型客户端、校验、批量跑表、失败样例）
+- try_parse.py：单条验证入口，`python try_parse.py "一句话"`
 - test_parse_requirement.py：解析模块的 24 个离线单测
 - .env.example：解析模块的配置模板；真实密钥写在本地 .env，不入库
 

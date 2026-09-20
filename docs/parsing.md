@@ -37,6 +37,7 @@
 | `parsing/parse_runs_mock.jsonl` | 离线固定响应批次运行记录（无需密钥） |
 | `parsing/mock_responses.json` | 离线固定响应，仅用于无密钥时验证流程 |
 | `parsing/failure_cases.md` | 失败样例、失败分层与遗留问题 |
+| `try_parse.py` | 单条验证入口：输入一句话，打印需求 JSON 与能否进入规划的提示 |
 | `test_parse_requirement.py` | 24 个离线单测，不联网、不需要密钥 |
 
 ## 配置
@@ -60,18 +61,26 @@
 在项目根目录、已激活虚拟环境：
 
 ```bash
-# 1. 离线自检：不需要密钥，验证流程能跑通
+# 1. 单条验证：输入一句话，直接打印需求 JSON（最常用）
+python try_parse.py "我是老师，每天练15分钟，想练楷书。"
+
+# 2. 离线自检：不需要密钥，验证流程能跑通
 python -m parsing.run_parse --client mock
 
-# 2. 真实调用：先在 .env 里填好密钥
+# 3. 真实调用：先在 .env 里填好密钥
 python -m parsing.run_parse --client real --tag w03-real
 
-# 3. 单测（不联网）
+# 4. 单测（不联网）
 python -m unittest -v test_parse_requirement
 
-# 4. 启动调试接口，在 /docs 里试 POST /parse
+# 5. 启动调试接口，在 /docs 里试 POST /parse
 python -m uvicorn main:app --reload
 ```
+
+`try_parse.py` 的 JSON 走 stdout、诊断信息走 stderr，所以 `python try_parse.py "..." 2>/dev/null`
+拿到的就是纯 JSON；不带参数运行会提示交互输入；`--mock` 只认识 `mock_responses.json` 里的 10 条固定输入。
+它还会顺带说明该结果能否直接提交 `POST /plan`：例如“每天练20分钟”会解析成 `complete`，
+但规划入口只接受 5/15/30 分钟，于是提示不能直接生成计划。
 
 常用参数：`--samples` 换样例文件，`--limit 10` 只跑前 N 条，`--out` 换输出路径，
 `--append` 追加而不是覆盖。退出码 0 表示全部符合人工期望，1 表示有不符合项，2 表示批次无法运行。

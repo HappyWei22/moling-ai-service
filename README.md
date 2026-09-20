@@ -44,7 +44,14 @@ python try_ai.py
 
 ### 3. 自然语言解析（第 3 周 W03-1）
 
-先离线验证流程，不需要密钥：
+输入一句话看输出 JSON（需要 `.env` 里的真实密钥）：
+
+```bash
+python try_parse.py "我是老师，每天练15分钟，想练楷书。"
+```
+
+只取 JSON、不显示诊断信息：`python try_parse.py "…" 2>/dev/null`。
+先离线验证流程、不需要密钥：
 
 ```bash
 python -m parsing.run_parse --client mock
