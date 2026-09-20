@@ -1,6 +1,6 @@
 # 开发指南
 
-[返回 README](../README.md) · [接口说明](api.md) · [开发指南](development.md) · [验证与待办](verification.md)
+[返回 README](../README.md) · [接口说明](api.md) · [解析说明](parsing.md) · [开发指南](development.md) · [验证与待办](verification.md)
 
 下列命令均在项目根目录执行，先按 README 创建虚拟环境并安装依赖。
 
@@ -16,7 +16,30 @@
 - check_examples.py：批量验证 v0.3 的 10 组需求样例
 - user_requirement/examples_v0.3.json：当前验证使用的新版样例
 - user_requirement/需求字段说明_v0.3.md：新版需求说明；同目录旧版文件仅供历史参考
-- main.py：FastAPI 调试入口
+- main.py：FastAPI 调试入口，含 `POST /plan` 与 `POST /parse`
+- parsing/：第 3 周需求解析（提示词、模型客户端、校验、批量跑表、失败样例）
+- test_parse_requirement.py：解析模块的 24 个离线单测
+- .env.example：解析模块的配置模板；真实密钥写在本地 .env，不入库
+
+## 需求解析（第 3 周 W03-1）
+
+`POST /parse` 与 `python -m parsing.run_parse` 都走同一条链路：
+
+```
+提示词 v0 → OpenAI 兼容 chat/completions（response_format=json_object）
+→ 抽取 JSON（容忍代码围栏和前后文字）→ finalize_requirement 本地收敛 → UserRequirement
+```
+
+`finalize_requirement()` 是唯一的收口点：非法值置 `null` 并写入 `errors`，
+信息不足转成 `needs_clarification` 并补追问，模型状态与字段不一致时按第 2 周协议重判。
+因此解析结果永远合法，`status != complete` 的需求会被 `check_requirement_ready()` 拦在规划之外。
+
+替换模型或入口：改 `.env` 的 `MOLING_LLM_BASE_URL`、`MOLING_LLM_MODEL` 即可，代码不需要改。
+新增提示词版本：加 `parsing/prompt_<版本>.md` 并登记到 `parse_requirement.PROMPT_FILES`，
+运行记录会写版本号和文件 sha256。
+
+离线自检（不需要密钥）：`python -m parsing.run_parse --client mock`。
+完整说明、运行记录字段和失败分层见[解析说明](parsing.md)与[失败样例](../parsing/failure_cases.md)。
 
 ## 可替换的计划生成器
 
@@ -88,9 +111,15 @@ python export_schemas.py --check
 
 ```bash
 python -m unittest -v test_worksheet_plan
+python -m unittest -v test_parse_requirement
 python check_examples.py
+python -m parsing.run_parse --client mock
 python export_schemas.py --check
 ```
+
+`test_parse_requirement` 与 `run_parse --client mock` 都不联网、不需要密钥；
+前者 24 个方法覆盖抽取、修复、状态裁定与失败分层，后者用第 2 周 10 组样例生成运行记录。
+真实模型批次用 `python -m parsing.run_parse --client real --tag w03-real`。
 
 `check_examples.py` 读取样例的 `expected`，不执行自然语言解析或调用模型。
 目前该脚本以打印汇总为准，尚未用非零退出码标记验证失败，请检查是否显示 10/10 通过。

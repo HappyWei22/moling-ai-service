@@ -1,6 +1,6 @@
 # 接口说明
 
-[返回 README](../README.md) · [接口说明](api.md) · [开发指南](development.md) · [验证与待办](verification.md)
+[返回 README](../README.md) · [接口说明](api.md) · [解析说明](parsing.md) · [开发指南](development.md) · [验证与待办](verification.md)
 
 ## 请求与响应
 
@@ -121,3 +121,14 @@
 - [异常样例说明](../WorkSheetPlan/异常样例.json)
 - [训练量规则](../WorkSheetPlan/训练量规则.md)
 - [协议修改说明与待确认事项](../WorkSheetPlan/修改说明与待确认事项.md)
+
+## 需求解析接口（第 3 周 W03-1）
+
+`POST /parse` 接收 `{"text": "用户原话"}`，返回 `UserRequirement`。
+只要文本能解析成协议，一律返回 200，业务状态看响应体的 `status`
+（`complete` / `needs_clarification` / `conflict` / `invalid`），响应头带
+`X-Moling-Client`、`X-Moling-Model`、`X-Moling-Prompt-Version`。
+
+错误沿用上面的统一格式，码为：`PARSE_FORMAT_ERROR`（422）、
+`PARSE_TRANSPORT_ERROR`（502）、`PARSE_CONFIG_ERROR`（503，缺少密钥）。
+完整说明、配置与运行记录见[解析说明](parsing.md)。
