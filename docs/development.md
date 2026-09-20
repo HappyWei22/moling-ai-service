@@ -119,8 +119,20 @@ python export_schemas.py --check
 ```
 
 `test_parse_requirement` 与 `run_parse --client mock` 都不联网、不需要密钥；
-前者 27 个方法覆盖抽取、修复、状态裁定与失败分层，后者用第 2 周 10 组样例生成运行记录。
-真实模型批次用 `python -m parsing.run_parse --client real --tag w03-real`。
+前者 28 个方法覆盖抽取、修复、状态裁定、失败分层、JSONL 读取与报告生成，
+后者用第 2 周 10 组样例生成运行记录。真实模型批次用
+`python -m parsing.run_parse --client real --tag w03-real`。
+
+接 W03-3 的 100 条样本（JSONL，dev+val 80 条，封存集不跑）：
+
+```bash
+python -m parsing.run_parse --client real --tag w03-3-dev-val \
+  --samples ../moling-W03-3/samples_100.jsonl --splits dev,val \
+  --out parsing/parse_runs_100.jsonl --report parsing/eval_report.md
+```
+
+报告含分集/类型/规划侧门禁分桶、字段级准确率与失败清单；`plan_gate=block` 属契约边界，
+下游算准确率时单独成桶（W03-3 约定）。细节见[解析说明](parsing.md)。
 
 `check_examples.py` 读取样例的 `expected`，不执行自然语言解析或调用模型。
 目前该脚本以打印汇总为准，尚未用非零退出码标记验证失败，请检查是否显示 10/10 通过。

@@ -85,11 +85,35 @@ python -m uvicorn main:app --reload
 它还会顺带说明该结果能否直接提交 `POST /plan`：例如“每天练20分钟”会解析成 `complete`，
 但规划入口只接受 5/15/30 分钟，于是提示不能直接生成计划。
 
-常用参数：`--samples` 换样例文件，`--limit 10` 只跑前 N 条，`--out` 换输出路径，
-`--append` 追加而不是覆盖。退出码 0 表示全部符合人工期望，1 表示有不符合项，2 表示批次无法运行。
+常用参数：`--samples` 换样例文件（**JSON 数组或 JSONL 都支持**），`--splits dev,val` 只跑指定分集
+（先于封存检查生效），`--limit 10` 只跑前 N 条，`--out` 换输出路径，`--append` 追加而不是覆盖，
+`--report 路径.md` 另写一份评测报告（分集/类型/规划侧门禁分桶 + 字段级准确率 + 失败清单）。
+退出码 0 表示全部符合人工期望，1 表示有不符合项，2 表示批次无法运行。
 
 样例里 `split` 标为 `封存`／`sealed`／`test` 的条目默认拒绝运行（退出码 2），
-避免用封存题调提示词；只有最终评估时才加 `--allow-sealed`。
+避免用封存题调提示词；只有最终评估时才加 `--allow-sealed`。若只想跑开发/验证集，
+用 `--splits dev,val` 先把封存样本过滤掉，就不会触发这条保护。
+
+### 接 W03-3 的 100 条样本
+
+```bash
+# 开发集 + 验证集（80 条），产出评测报告
+python -m parsing.run_parse --client real --tag w03-3-dev-val \
+  --samples ../moling-W03-3/samples_100.jsonl --splits dev,val \
+  --out parsing/parse_runs_100.jsonl --report parsing/eval_report.md
+
+# 封存集：仅最终评估，运行前必须按 W03-3《封存访问记录》登记
+python -m parsing.run_parse --client real --samples ../moling-W03-3/samples_100.jsonl \
+  --splits sealed --allow-sealed --out parsing/parse_runs_sealed.jsonl
+```
+
+报告的读法（与 W03-3 的约定一致）：
+
+- **按分集**：dev 用于定位失败、val 用于前后对比；封存集结果必须单独成节，不与前两者混算。
+- **按规划侧门禁**：`block` 是契约边界（非标准时长、非空 exclusions），
+  下游算准确率时不能把它当成"模型理解错误"，否则基线被压低约 16 个百分点。
+- **字段级准确率**：分母是成功解析的样本数；`follow_up` 同时给"逐字一致"和"仅要求该问就问"两行。
+- **失败清单**：全部列出（不豁免），每行标出解析失败层或差异字段。
 
 离线固定响应只用于验证流程；**真实模型效果必须用 `--client real` 重跑**，
 `parse_runs.jsonl` 里 `mock=true` 的记录不能当作模型效果证据。
@@ -155,6 +179,15 @@ python -m uvicorn main:app --reload
 - 裁决落地效果：UR-08（「我想练行书，但目前系统只支持楷书」）由 `conflict` 改为
   `style=行书` + 缺时长追问，真实批次已符合；提示词 v0 批次该条为 conflict（错误口径），
   两轮记录可直接对比。
+- **100 条样本首批评测（2026-09-20，dev+val 80 条，封存集未跑）**：
+  `python -m parsing.run_parse --client real --tag w03-3-dev-val --samples ../moling-W03-3/samples_100.jsonl
+  --splits dev,val --out parsing/parse_runs_100.jsonl --report parsing/eval_report.md`
+  → **完全一致 57/80（71.2%）**，dev 70.0% / val 75.0%，零解析失败。
+  字段级：duration 100% · style 98.8% · exclusions 98.8% · occupation 97.5% · status 97.5% ·
+  errors 95.0% · goal 93.8% · scene 85.0%；`follow_up` 逐字 91.2%、"该问就问" **100%**。
+  23 条失败全部是提示词缺口径（scene 词表、goal 删冗余助词等 9 类），清单见
+  [失败样例](../parsing/failure_cases.md)第 2c 节。报告按 `split`、`category`、`plan_gate` 分桶，
+  `plan_gate=block` 单独列出，避免下游把契约边界计成模型错误。
 - 两条真实结论：① 模型自报状态不可信（UR-07 误报 `needs_clarification`、UR-03 在 v0 批次误报），
   被本地收敛纠正，说明 `finalize_requirement()` 的收口是必需环节；
   ② 结构化输出本身没有格式失败，`format` 层零失败。
@@ -165,10 +198,10 @@ python -m uvicorn main:app --reload
 ## 约束与遗留问题
 
 - 本任务不重试、不做高级监控，只提供单次调用、超时和一条耗时记录；重试、脱敏日志、批量重放归 W03-4。
-- **W04-1 首要事项：把 W03-3 的规范化词表搬进提示词**。W03-3 的 100 条标准答案中，
-  17 条（goal 6 + scene 11）需要“删冗余助词 + 词表映射”（如 `板书/写板书 → 课堂板书`、
-  `写病历/病历 → 病历书写`、`改善字的工整度 → 改善工整度`），我们现在的提示词是“照抄原话”，
-  直接跑会在这 17 条上失分——这不是模型问题，是提示词缺词表。口径已由 W03-3 C-10 定稿（已定，无需再裁）。
+- **W04-1 首要事项：把 W03-3 的口径搬进 `prompt_v2.md`**。首批评测的 23 条失败已归成 9 类规则
+  （scene 词表、goal 删冗余助词、书写工具不是书体、区间时长按未提供、`errors.value` 形式、
+  exclusions 去修饰、多职业 `/` 连接、场景词出现在 goal 中不算 scene、书体与排除项重合的写法），
+  逐条清单见[失败样例](../parsing/failure_cases.md)第 2c 节。改完跑同一条命令对比 val 桶分数即可。
 - 样例仍是第 2 周的 10 条（UR-01～UR-10）；扩到 100 条、按 `split` 分桶评测归 W03-3 + W04-3，
   届时换 `--samples` 并支持 JSONL 格式后重跑。
 - 注意：裁决 C-01b 之后，这 10 条开发样例里**已没有 conflict 样本**（原 UR-08 改为缺时长追问）；

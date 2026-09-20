@@ -276,6 +276,42 @@ class MockBatchTests(unittest.TestCase):
             self.assertEqual(code, 2)
             self.assertFalse(out.exists())
 
+    def test_jsonl_samples_and_split_filter_and_report(self):
+        """支持 W03-3 的 JSONL 样例；--splits 过滤后不再触发封存拒绝；能产出评测报告。"""
+        with tempfile.TemporaryDirectory() as folder:
+            folder_path = Path(folder)
+            samples = folder_path / "samples.jsonl"
+            rows = [
+                {"id": "T-01", "category": "normal", "subtype": "x", "split": "dev",
+                 "semantic_group": "G1", "input": "我是老师，每天练15分钟，想练楷书。",
+                 "expected": candidate(), "plan_gate": {"gate": "pass", "reason": None,
+                                                        "transient": False, "layer_conflict": False}},
+                {"id": "T-02", "category": "invalid", "subtype": "y", "split": "sealed",
+                 "semantic_group": "G2", "input": "想练楷书，每天练-5分钟。",
+                 "expected": candidate(status="invalid", style="楷书", duration_minutes=None,
+                                       errors=[{"type": "invalid_value", "field": "duration_minutes", "value": -5}],
+                                       follow_up="练习时长必须是正数，请重新告诉我每次想练几分钟。"),
+                 "plan_gate": {"gate": "block", "reason": "x", "transient": False, "layer_conflict": False}},
+            ]
+            samples.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows), encoding="utf-8")
+            out = folder_path / "parse_runs.jsonl"
+            report = folder_path / "report.md"
+            with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                code = run_parse_main([
+                    "--client", "mock", "--samples", str(samples), "--splits", "dev",
+                    "--out", str(out), "--report", str(report), "--tag", "t",
+                ])
+            self.assertEqual(code, 0, "T-01 的原话在 mock 响应表里，应能解析并与期望一致")
+            records = [json.loads(line) for line in out.read_text(encoding="utf-8").splitlines()]
+            self.assertEqual([r["sample_id"] for r in records], ["T-01"], "封存样本应被 --splits 过滤掉")
+            self.assertTrue(records[0]["expectation_match"])
+            text = report.read_text(encoding="utf-8")
+            self.assertIn("需求解析评测报告", text)
+            self.assertIn("按分集", text)
+            self.assertIn("字段级准确率", text)
+            self.assertEqual(records[0]["split"], "dev")
+            self.assertEqual(records[0]["plan_gate"]["gate"], "pass")
+
 
 class EndpointTests(unittest.TestCase):
     """直接调用路由函数，不经过网络端口，也不需要 httpx。"""

@@ -65,6 +65,14 @@ python -m parsing.run_parse --client real --tag w03-real
 python -m unittest -v test_parse_requirement
 ```
 
+接 W03-3 的 100 条样本跑评测（dev+val 80 条，封存集不跑）：
+
+```bash
+python -m parsing.run_parse --client real --tag w03-3-dev-val \
+  --samples ../moling-W03-3/samples_100.jsonl --splits dev,val \
+  --out parsing/parse_runs_100.jsonl --report parsing/eval_report.md
+```
+
 结果写入 `parsing/parse_runs.jsonl`（当前为 2026-09-20 真实批次，qwen3.8-flash，10 条 9 条符合）；
 离线批次保存在 `parsing/parse_runs_mock.jsonl`。细节见[解析说明](docs/parsing.md)。
 

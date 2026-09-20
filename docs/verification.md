@@ -18,6 +18,10 @@
   并支持 `conflicting_values` → `conflict`、书体与排除项重合 → `conflict`（C-08b）；
   `需求字段说明_v0.3.md` 的 §5/§6 示例已同步改判。
 - 单测：`python -m unittest -v test_parse_requirement` → **27 个方法全部通过**（新增 C-01/C-02/C-04/C-08b 四组用例）。
+- **100 条样本评测（dev+val 80 条）**：`--samples ../moling-W03-3/samples_100.jsonl --splits dev,val`
+  → **57/80（71.2%）** 完全一致，dev 70.0% / val 75.0%，`format`/`transport` 零失败；
+  字段级最低是 scene 85.0%，其余 ≥93.8%。23 条失败全部归因于提示词缺规范化词表（9 类），
+  已整理成 W04-1 的施工清单。封存集 20 条未运行（规则：仅最终评估，需登记）。
 - **提示词 v1 真实批次**：`python -m parsing.run_parse --client real --tag w03-real` →
   **10 条中 9 条与人工期望一致**，记录在 `parsing/parse_runs.jsonl`
   （`model=qwen3.8-flash`、提示词 v1 sha256 `9655d603c46e`、单次调用、用量齐全）。
