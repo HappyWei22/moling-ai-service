@@ -2,7 +2,7 @@
 
 接收结构化的 `UserRequirement`，返回 `WorksheetPlan`，并提供 FastAPI 调试接口。
 当前采用 **v0.3 协议修订稿和固定假数据**，已支持替换生成器。
-第 3 周新增 `POST /parse`：把用户自然语言解析成 `UserRequirement`（提示词 v0 + Qwen 结构化输出 + 本地校验）。
+第 3 周新增 `POST /parse`：把用户自然语言解析成 `UserRequirement`（提示词 v1 + Qwen 结构化输出 + 本地校验）。
 
 第一版仅支持临摹和 5/15/30 分钟；非空排除项暂时拒绝。
 尚未实现个性化选词、字帖渲染或 AI 评分，协议和暂定字格配额仍待团队确认。

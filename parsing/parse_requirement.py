@@ -24,12 +24,25 @@ from .config import Settings, get_settings
 from .errors import ParseConfigError, ParseFormatError
 from .llm_client import ChatClient, DashScopeChatClient, LLMResponse
 
-PROMPT_FILES = {"v0": Path(__file__).parent / "prompt_v0.md"}
-DEFAULT_PROMPT_VERSION = "v0"
+PROMPT_FILES = {
+    "v0": Path(__file__).parent / "prompt_v0.md",
+    "v1": Path(__file__).parent / "prompt_v1.md",
+}
+# v1（2026-09-20）：按裁决 C-01/C-01b/C-02/C-17 修正 status 判定、errors 词表与多书体规则。
+# v0 保留为冻结基线，便于前后对比。
+DEFAULT_PROMPT_VERSION = "v1"
 
 SUPPORTED_STYLES = ("楷书", "行书", "行楷")
 STYLE_ALIASES = {"楷体": "楷书", "行楷体": "行楷"}
 OCCUPATION_ALIASES = {"老师": "教师", "小学生": "学生"}
+
+# errors.type 受控词表（2026-09-20 裁决 C-17 定稿，与 W03-3-rules-v1.2 一致）
+# 上游旧写法 unsupported_style（无 _value）已废弃。
+ERR_INVALID_VALUE = "invalid_value"
+ERR_UNSUPPORTED_STYLE = "unsupported_style_value"
+ERR_CONFLICTING_VALUES = "conflicting_values"
+# 命中这些错误类型时状态一律判 invalid（不再跟随模型自报，裁决 C-01）
+INVALIDATING_ERROR_TYPES = (ERR_INVALID_VALUE, ERR_UNSUPPORTED_STYLE)
 
 PROTOCOL_FIELDS = (
     "occupation",
@@ -203,15 +216,24 @@ def finalize_requirement(candidate: dict[str, Any]) -> tuple[UserRequirement, li
     errors = _clean_errors(candidate.get("errors"), warnings)
 
     if style is not None and style not in SUPPORTED_STYLES:
-        _add_error(errors, "unsupported_style_value", "style", style_raw)
+        _add_error(errors, ERR_UNSUPPORTED_STYLE, "style", style_raw)
         style = None
         warnings.append(f"书体 {style_raw!r} 不在支持范围内，已置 null 并记入 errors")
 
     duration_raw = candidate.get("duration_minutes")
     duration = _clean_duration(duration_raw, warnings)
     if duration_raw is not None and duration is None:
-        _add_error(errors, "invalid_value", "duration_minutes", duration_raw)
+        _add_error(errors, ERR_INVALID_VALUE, "duration_minutes", duration_raw)
         warnings.append("时长不是合法正整数，已置 null 并记入 errors")
+
+    # 不变量（裁决 C-04）：errors 点名的字段一律置 null，避免同字段合法值与非法值并存。
+    error_fields = {item["field"] for item in errors}
+    if "style" in error_fields and style is not None:
+        warnings.append(f"errors 点名 style，已按 C-04 置 null（原值 {style!r}）")
+        style = None
+    if "duration_minutes" in error_fields and duration is not None:
+        warnings.append(f"errors 点名 duration_minutes，已按 C-04 置 null（原值 {duration!r}）")
+        duration = None
 
     exclusions_raw = candidate.get("exclusions")
     exclusions: list[str] = []
@@ -234,7 +256,20 @@ def finalize_requirement(candidate: dict[str, Any]) -> tuple[UserRequirement, li
 
     # 状态裁定：errors 优先，其次补追问，最后才允许 complete。
     if errors:
-        status = "conflict" if status == "conflict" else "invalid"
+        error_types = {item["type"] for item in errors}
+        if error_types & set(INVALIDATING_ERROR_TYPES):
+            # 非法值 / 枚举外书体一律 invalid，不再跟随模型自报（裁决 C-01）
+            status = "invalid"
+            if candidate.get("status") == "conflict":
+                warnings.append("枚举外书体或非法值不能判 conflict，已按 C-01 改判 invalid")
+        elif ERR_CONFLICTING_VALUES in error_types:
+            # 多个合法值互相冲突 → conflict（裁决 C-02）
+            status = "conflict"
+        elif status == "conflict":
+            # 其它冲突类错误（如书体与排除项重合）保留模型的冲突判断
+            status = "conflict"
+        else:
+            status = "invalid"
     else:
         missing: list[str] = []
         if style is None:
@@ -249,6 +284,12 @@ def finalize_requirement(candidate: dict[str, Any]) -> tuple[UserRequirement, li
             if not follow_up:
                 follow_up = FOLLOW_UPS[missing[0]]
             warnings.append(f"信息不足（{missing[0]}），已标为 needs_clarification")
+        elif style in exclusions:
+            # 书体与排除项重合：双方都是用户的合法表达，判 conflict 且 errors 保持为空（裁决 C-08b）
+            status = "conflict"
+            if not follow_up:
+                follow_up = f"你既要求练习{style}，又要求排除{style}，请确认以哪一个为准。"
+            warnings.append("书体与排除项重合，已按冲突处理")
         elif status in (None, "needs_clarification"):
             status = "complete"
             warnings.append("字段已满足生成条件，状态已修正为 complete")

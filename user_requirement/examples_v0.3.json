@@ -113,7 +113,7 @@
   },
   {
     "id": "UR-08",
-    "category": "conflict",
+    "category": "missing",
     "input": "我想练行书，但目前系统只支持楷书。",
     "expected": {
       "occupation": null,
@@ -122,15 +122,9 @@
       "duration_minutes": null,
       "goal": null,
       "exclusions": [],
-      "status": "conflict",
-      "follow_up": "你希望练行书，但当前系统只支持楷书。是否先改用楷书？",
-      "errors": [
-        {
-          "type": "unsupported_style",
-          "field": "style",
-          "value": "行书"
-        }
-      ]
+      "status": "needs_clarification",
+      "follow_up": "你每次大约想练几分钟？目前可以按5、15或30分钟来规划。",
+      "errors": []
     }
   },
   {

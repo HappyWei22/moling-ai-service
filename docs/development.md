@@ -17,9 +17,9 @@
 - user_requirement/examples_v0.3.json：当前验证使用的新版样例
 - user_requirement/需求字段说明_v0.3.md：新版需求说明；同目录旧版文件仅供历史参考
 - main.py：FastAPI 调试入口，含 `POST /plan` 与 `POST /parse`
-- parsing/：第 3 周需求解析（提示词、模型客户端、校验、批量跑表、失败样例）
+- parsing/：第 3 周需求解析（提示词 v1 当前、v0 冻结基线、模型客户端、校验、批量跑表、失败样例）
 - try_parse.py：单条验证入口，`python try_parse.py "一句话"`
-- test_parse_requirement.py：解析模块的 24 个离线单测
+- test_parse_requirement.py：解析模块的 27 个离线单测
 - .env.example：解析模块的配置模板；真实密钥写在本地 .env，不入库
 
 ## 需求解析（第 3 周 W03-1）
@@ -27,7 +27,7 @@
 `POST /parse` 与 `python -m parsing.run_parse` 都走同一条链路：
 
 ```
-提示词 v0 → OpenAI 兼容 chat/completions（response_format=json_object）
+提示词（v1 当前 / v0 冻结基线）→ OpenAI 兼容 chat/completions（response_format=json_object）
 → 抽取 JSON（容忍代码围栏和前后文字）→ finalize_requirement 本地收敛 → UserRequirement
 ```
 
@@ -119,7 +119,7 @@ python export_schemas.py --check
 ```
 
 `test_parse_requirement` 与 `run_parse --client mock` 都不联网、不需要密钥；
-前者 24 个方法覆盖抽取、修复、状态裁定与失败分层，后者用第 2 周 10 组样例生成运行记录。
+前者 27 个方法覆盖抽取、修复、状态裁定与失败分层，后者用第 2 周 10 组样例生成运行记录。
 真实模型批次用 `python -m parsing.run_parse --client real --tag w03-real`。
 
 `check_examples.py` 读取样例的 `expected`，不执行自然语言解析或调用模型。

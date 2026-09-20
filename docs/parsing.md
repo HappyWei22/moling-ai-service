@@ -9,8 +9,10 @@
 | 任务 | W03-1 按历史路线验证 Qwen 提示词与结构化输出 |
 | 主负责人 | 尚星纬 |
 | 复核 | W03-3 · 罗占勇 |
-| 状态 | 真实批次已跑：qwen3.8-flash，10 条 9 条与人工期望一致，剩余 1 条为标注口径争议（见验收证据） |
-| 提示词版本 | v0（`parsing/prompt_v0.md`，运行记录里带 sha256 前 12 位） |
+| 状态 | 真实批次已跑两轮：**prompt v1 + qwen3.8-flash**，10 条 9 条与人工期望一致；
+剩余 1 条（UR-03 的 goal 措辞）已由 W03-3 口径 C-10 定为“删冗余助词”，属 W04-1 落地事项 |
+| 提示词版本 | **v1**（`parsing/prompt_v1.md`，2026-09-20 按裁决 C-01/C-01b/C-02/C-17 修订）；
+v0 保留为冻结基线，便于前后对比。运行记录里带版本号与 sha256 前 12 位 |
 | 模型入口 | 阿里云百炼 DashScope OpenAI 兼容接口，`qwen3.8-flash`，`response_format=json_object`，temperature 0，`enable_thinking=false` |
 
 一句话目标：**让模型把自然语言填进需求表**，填完的结果必须能直接当 `UserRequirement` 用，
@@ -27,7 +29,8 @@
 
 | 文件 | 作用 |
 |---|---|
-| `parsing/prompt_v0.md` | 提示词 v0：任务、硬约束、输出格式、status 判定、追问话术、4 个示例 |
+| `parsing/prompt_v1.md` | **当前提示词**：在 v0 基础上按裁决修正 status 判定、errors 受控词表、多书体规则、UR-08 示例 |
+| `parsing/prompt_v0.md` | 提示词 v0（冻结基线）：任务、硬约束、输出格式、status 判定、追问话术、示例 |
 | `parsing/parse_requirement.py` | 解析主流程：调用 → 抽 JSON → 本地校验与状态裁定 |
 | `parsing/llm_client.py` | OpenAI 兼容客户端（标准库实现）与离线固定响应客户端 |
 | `parsing/config.py` | 读 `.env` 与环境变量，不把密钥写进代码或日志 |
@@ -38,7 +41,7 @@
 | `parsing/mock_responses.json` | 离线固定响应，仅用于无密钥时验证流程 |
 | `parsing/failure_cases.md` | 失败样例、失败分层与遗留问题 |
 | `try_parse.py` | 单条验证入口：输入一句话，打印需求 JSON 与能否进入规划的提示 |
-| `test_parse_requirement.py` | 24 个离线单测，不联网、不需要密钥 |
+| `test_parse_requirement.py` | 27 个离线单测，不联网、不需要密钥 |
 
 ## 配置
 
@@ -52,7 +55,7 @@
 | `MOLING_LLM_TEMPERATURE` | `0` | 抽取任务建议 0 |
 | `MOLING_LLM_TIMEOUT` | `60` | 秒；超时算 transport 失败，不重试（重试归 W03-4） |
 | `MOLING_LLM_EXTRA_BODY` | 空 | JSON 对象，追加到请求体；qwen3 思考模型建议 `{"enable_thinking": false}`，报 400 时改为 `{}` |
-| `MOLING_LLM_PROMPT_VERSION` | `v0` | 对应 `parsing/prompt_<版本>.md` |
+| `MOLING_LLM_PROMPT_VERSION` | `v1` | 对应 `parsing/prompt_<版本>.md`；v0 为冻结基线 |
 
 密钥只在请求头出现；运行记录只写模型名、主机名、提示词版本和 sha256，不写密钥。
 
@@ -139,16 +142,21 @@ python -m uvicorn main:app --reload
 
 ## 验收证据
 
-- 单测：`python -m unittest -v test_parse_requirement` → 24 个方法全部通过（离线，可复跑）。
+- 单测：`python -m unittest -v test_parse_requirement` → **27 个方法全部通过**（离线，可复跑），
+  含裁决新增用例：枚举外书体不得判 conflict（C-01）、errors 点名字段一律置 null（C-04）、
+  多书体并列判 conflict（C-02）、书体与排除项重合保留 conflict（C-08b）。
 - 离线批次：`python -m parsing.run_parse --client mock` → 10/10 与人工期望一致，记录在 `parse_runs_mock.jsonl`。
-- **真实批次：`python -m parsing.run_parse --client real --tag w03-real`（qwen3.8-flash，temperature 0，
-  enable_thinking=false，批次 `20260920T085924Z-w03-real`）
+- **真实批次（prompt v1）：`python -m parsing.run_parse --client real --tag w03-real`
   → 10 条中 9 条与人工期望一致**，记录在 `parse_runs.jsonl`：`mock=false`、`model=qwen3.8-flash`、
-  提示词 v0 + sha256 `79d2b88b5c00`、单次调用、用量齐全、耗时 2088–3574 ms（中位 2597 ms）、
-  单条 total_tokens 1585–1632。同一配置连跑两次结果一致（9/10，差异样本同为 UR-03）。
-  唯一不符合项是 UR-03 的 `goal` 措辞（模型照抄原话“改善字的工整度”，标注为“改善工整度”），
-  属标注口径争议，见[失败样例](../parsing/failure_cases.md)第 2.1 节，交 W03-3 裁决。
-- 两条真实结论：① 10 条里 1 条模型自报状态错误（UR-07 误报 `needs_clarification`），被本地收敛纠正为 `complete`；
+  提示词 v1 + sha256 `9655d603c46e`、单次调用、用量齐全。
+  唯一不符合项仍是 UR-03 的 `goal` 措辞（模型照抄“改善字的工整度”），
+  该口径已由 W03-3 裁决 C-10 定为“删冗余助词 + 词表映射、不做同义替换”，
+  **属 W04-1 的提示词落地事项**（见下“约束与遗留问题”）。
+- 裁决落地效果：UR-08（「我想练行书，但目前系统只支持楷书」）由 `conflict` 改为
+  `style=行书` + 缺时长追问，真实批次已符合；提示词 v0 批次该条为 conflict（错误口径），
+  两轮记录可直接对比。
+- 两条真实结论：① 模型自报状态不可信（UR-07 误报 `needs_clarification`、UR-03 在 v0 批次误报），
+  被本地收敛纠正，说明 `finalize_requirement()` 的收口是必需环节；
   ② 结构化输出本身没有格式失败，`format` 层零失败。
 - 接口：`main.py` 已加 `POST /parse`，`/docs` 可试；导入服务不需要密钥，缺少密钥时只在调用时返回 503。
 - 真实接口连通性：无效密钥返回 401 `invalid_api_key`、账号欠费返回 400 `Arrearage`，
@@ -157,8 +165,14 @@ python -m uvicorn main:app --reload
 ## 约束与遗留问题
 
 - 本任务不重试、不做高级监控，只提供单次调用、超时和一条耗时记录；重试、脱敏日志、批量重放归 W03-4。
-- 样例仍是第 2 周的 10 条（UR-01～UR-10）；扩到 100 条、划分 60/20/20 归 W03-3，届时换 `--samples` 重跑同一脚本。
-- UR-03 的 `goal` 口径待 W03-3 裁决；在裁决前**不改 Prompt、不做删减式规范化**，避免把改写用户意愿写进代码。
+- **W04-1 首要事项：把 W03-3 的规范化词表搬进提示词**。W03-3 的 100 条标准答案中，
+  17 条（goal 6 + scene 11）需要“删冗余助词 + 词表映射”（如 `板书/写板书 → 课堂板书`、
+  `写病历/病历 → 病历书写`、`改善字的工整度 → 改善工整度`），我们现在的提示词是“照抄原话”，
+  直接跑会在这 17 条上失分——这不是模型问题，是提示词缺词表。口径已由 W03-3 C-10 定稿（已定，无需再裁）。
+- 样例仍是第 2 周的 10 条（UR-01～UR-10）；扩到 100 条、按 `split` 分桶评测归 W03-3 + W04-3，
+  届时换 `--samples` 并支持 JSONL 格式后重跑。
+- 注意：裁决 C-01b 之后，这 10 条开发样例里**已没有 conflict 样本**（原 UR-08 改为缺时长追问）；
+  conflict 类的评估样本在 W03-3 的 S068(dev)、S069/S070(val)。
 - 解析只判“信息是否够生成”，不判 5/15/30 的业务范围：用户说 20 分钟会解析成 `complete` + `duration_minutes=20`，
   由 Planner 决定映射（W02-1 §13 未决问题 2）。
 - 追问话术由本地兜底与提示词共同决定，措辞差异用 `follow_up_check=text_differs` 标注，口径以 W03-3 标注指南为准。

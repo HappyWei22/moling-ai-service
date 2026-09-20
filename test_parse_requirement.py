@@ -120,15 +120,45 @@ class FinalizeTests(unittest.TestCase):
         self.assertEqual(requirement.errors[0].type, "unsupported_style_value")
         self.assertEqual(requirement.errors[0].value, "草书")
 
-    def test_conflict_keeps_user_wish(self):
-        requirement, _ = finalize_requirement(candidate(
-            style="行书", duration_minutes=None, status="conflict",
-            follow_up="你希望练行书，但当前系统只支持楷书。是否先改用楷书？",
-            errors=[{"type": "unsupported_style", "field": "style", "value": "行书"}],
+    def test_model_conflict_cannot_override_unsupported_style(self):
+        """裁决 C-01：枚举外书体一律 invalid，不再跟随模型自报 conflict。"""
+        requirement, warnings = finalize_requirement(candidate(
+            style="草书", status="conflict", follow_up="是否改用楷书？",
+            errors=[{"type": "unsupported_style_value", "field": "style", "value": "草书"}],
         ))
-        self.assertEqual(requirement.style, "行书")
+        self.assertIsNone(requirement.style)
+        self.assertEqual(requirement.status, "invalid")
+        self.assertTrue(any("C-01" in item for item in warnings))
+
+    def test_same_field_invalid_value_nulls_the_field(self):
+        """裁决 C-04：errors 点名的字段一律置 null，合法值也不保留。"""
+        requirement, warnings = finalize_requirement(candidate(
+            errors=[{"type": "invalid_value", "field": "duration_minutes", "value": -10}],
+        ))
+        self.assertIsNone(requirement.duration_minutes)
+        self.assertEqual(requirement.status, "invalid")
+        self.assertTrue(any("C-04" in item for item in warnings))
+
+    def test_multi_style_conflict(self):
+        """裁决 C-02：多个合法书体并列 → style=null + conflict + conflicting_values。"""
+        requirement, _ = finalize_requirement(candidate(
+            style=None, status="conflict",
+            follow_up="你提到多种书体，请确认本次先练哪一种？目前可以按楷书、行书或行楷来规划。",
+            errors=[{"type": "conflicting_values", "field": "style", "value": "楷书和行书"}],
+        ))
+        self.assertIsNone(requirement.style)
         self.assertEqual(requirement.status, "conflict")
-        self.assertEqual(len(requirement.errors), 1)
+        self.assertEqual(requirement.errors[0].type, "conflicting_values")
+
+    def test_exclusion_conflict_keeps_user_wish(self):
+        """裁决 C-08b：书体与排除项重合，双方都是合法表达 → conflict 且 errors 为空。"""
+        requirement, _ = finalize_requirement(candidate(
+            exclusions=["楷书"], status="conflict", errors=[],
+        ))
+        self.assertEqual(requirement.style, "楷书")
+        self.assertEqual(requirement.status, "conflict")
+        self.assertEqual(requirement.errors, [])
+        self.assertIn("排除", requirement.follow_up)
 
     def test_status_without_detail_is_repaired(self):
         requirement, _ = finalize_requirement(candidate(status="conflict"))
@@ -213,7 +243,8 @@ class MockBatchTests(unittest.TestCase):
             if outcome.requirement.status != "complete":
                 with self.subTest(sample=sample["id"]), self.assertRaises(RequirementNotReadyError):
                     check_requirement_ready(outcome.requirement)
-        self.assertEqual(statuses, {"complete", "needs_clarification", "conflict", "invalid"})
+        # 裁决 C-01b 后 UR-08 由 conflict 改为缺时长追问，10 条里不再有 conflict 样本
+        self.assertEqual(statuses, {"complete", "needs_clarification", "invalid"})
 
     def test_run_parse_writes_jsonl_and_matches(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -227,7 +258,7 @@ class MockBatchTests(unittest.TestCase):
             self.assertEqual(len(records), 10)
             self.assertTrue(all(record["expectation_match"] for record in records))
             self.assertTrue(all(record["mock"] for record in records))
-            self.assertTrue(all(record["prompt_version"] == "v0" for record in records))
+            self.assertTrue(all(record["prompt_version"] == "v1" for record in records))
 
     def test_run_parse_refuses_sealed_samples(self):
         with tempfile.TemporaryDirectory() as folder:

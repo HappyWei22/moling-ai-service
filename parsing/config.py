@@ -103,6 +103,6 @@ def get_settings() -> tuple[Settings, list[str]]:
         timeout_seconds=_read_float("MOLING_LLM_TIMEOUT", DEFAULT_TIMEOUT_SECONDS),
         temperature=_read_float("MOLING_LLM_TEMPERATURE", DEFAULT_TEMPERATURE),
         extra_body=extra_body,
-        prompt_version=os.environ.get("MOLING_LLM_PROMPT_VERSION", "").strip() or "v0",
+        prompt_version=os.environ.get("MOLING_LLM_PROMPT_VERSION", "").strip() or "v1",
     )
     return settings, warnings
