@@ -16,7 +16,7 @@
 ```
 
 缺少信息、冲突或非法值时仍返回 HTTP 200，但业务 `code` 为 400，`message` 为本轮追问，`data` 为 null。
-例如只提供“我是学生”时会追问书体。只有 `status=complete` 的 `data` 可以提交 `POST /plan/v2`。
+例如只提供“我是学生”时会一次追问书体和练习时长。v2 模型只提取字段并记录非法值、冲突，不生成 `follow_up`；本地代码沿用 `errors`，补齐 `missing_field`、去重，并把全部问题合并为 `message`。已因非法值或冲突置空的字段不会重复报缺失。职业和场景只需提供一项，两者均缺失时作为一条组合问题提示。内部状态优先级为 `invalid > conflict > needs_clarification`，接口结构保持不变，不对外返回错误列表。只有 `status=complete` 的 `data` 可以提交 `POST /plan/v2`。
 `font` 是书体名，仅支持楷书、行书、行楷；计划协议尚使用 `style`，`/plan/v2` 在服务内完成映射。
 解析时长只接受 5、15、30 分钟。模型调用、格式、配置失败分别使用 HTTP 502、422、503，区别于业务追问。
 后端对外的 `/api/nlp/parse`、`session_id` 和窗口展示由后端实现，此服务的 `/parse/v2` 不创建或保存会话。

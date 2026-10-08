@@ -50,6 +50,8 @@ python try_ai.py
 python try_parse.py "我是老师，每天练15分钟，想练楷书。"
 ```
 
+`try_parse.py` 默认走 v2，与 `/parse/v2` 一样返回 `code/message/data`；所有已识别问题合并到 `message`。验证旧版时使用 `python try_parse.py --version v1 "…"`。
+
 只取 JSON、不显示诊断信息：`python try_parse.py "…" 2>/dev/null`。
 先离线验证流程、不需要密钥：
 

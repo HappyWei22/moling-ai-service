@@ -35,82 +35,113 @@ def _clean_text(value: Any) -> str | None:
     return value.strip() or None
 
 
-def _first_error(errors: Any, field: str) -> bool:
-    return isinstance(errors, list) and any(
-        isinstance(item, dict) and item.get("field") == field for item in errors
-    )
+def _collect_errors(candidate: dict[str, Any], values: dict[str, Any]) -> list[dict[str, Any]]:
+    """合并模型错误和本地校验结果；同一问题只提示一次。"""
+    errors: list[dict[str, Any]] = []
+
+    def add(error_type: str, field: str, value: Any = None) -> None:
+        if not any(item["type"] == error_type and item["field"] == field for item in errors):
+            errors.append({"type": error_type, "field": field, "value": value})
+
+    model_errors = candidate.get("errors")
+    if isinstance(model_errors, list):
+        for item in model_errors:
+            if not isinstance(item, dict):
+                continue
+            error_type = _clean_text(item.get("type"))
+            field = _clean_text(item.get("field"))
+            # 缺失由本地统一判断，避免模型误报或重复报告组合条件。
+            if error_type and field and error_type != "missing_field":
+                add(error_type, field, item.get("value"))
+
+    for field, supported in (("font", FONTS), ("duration_minutes", DURATIONS)):
+        raw = candidate.get(field)
+        value = values[field]
+        if raw is not None and (value is None or value not in supported):
+            add("invalid_value", field, raw)
+
+    for item in errors:
+        if item["field"] in values:
+            values[item["field"]] = None
+
+    for field in ("font", "duration_minutes"):
+        if values[field] is None and not any(item["field"] == field for item in errors):
+            add("missing_field", field)
+    if values["occupation"] is None and values["scene"] is None:
+        if not any(item["field"] in ("occupation", "scene", "personalization") for item in errors):
+            add("missing_field", "personalization")
+
+    # 保留模型无明细的异常状态，不能据此放行，但也不能丢掉其他缺失项。
+    if candidate.get("status") == "invalid" and not any(
+        item["type"] not in ("missing_field", "conflicting_values") for item in errors
+    ):
+        add("invalid_value", "requirement")
+    if candidate.get("status") == "conflict" and not any(
+        item["type"] == "conflicting_values" for item in errors
+    ):
+        add("conflicting_values", "requirement")
+    order = {"font": 0, "duration_minutes": 1, "occupation": 2, "scene": 3, "personalization": 4}
+    return sorted(errors, key=lambda item: order.get(item["field"], 5))
+
+
+def _error_message(error: dict[str, Any]) -> str:
+    field = error["field"]
+    label = {"font": "书体", "duration_minutes": "练习时长", "occupation": "职业",
+             "scene": "书写场景", "personalization": "职业或书写场景"}.get(field, "需求信息")
+    if error["type"] == "missing_field":
+        return {
+            "font": "你想练哪种书体？目前支持楷书、行书或行楷。",
+            "duration_minutes": "你每次想练几分钟？目前支持5、15或30分钟。",
+            "personalization": "你是什么职业，或者主要在哪种场景使用书写？",
+        }.get(field, f"请补充{label}。")
+    if error["type"] == "conflicting_values":
+        return f"{label}存在冲突，请确认本次以哪个为准。"
+    value = error.get("value")
+    detail = f"（你提供的是{value}）" if value is not None else ""
+    if field == "font":
+        return f"书体不在支持范围内{detail}，请选择楷书、行书或行楷。"
+    if field == "duration_minutes":
+        return f"练习时长不符合要求{detail}，请选择5、15或30分钟。"
+    return f"{label}存在非法或不支持的内容{detail}，请修改或重新提供。"
 
 
 def finalize_v2(candidate: dict[str, Any]) -> tuple[ParsedRequirementV2, str]:
-    """本地决定状态，不允许模型仅靠自报 complete 越过缺失或非法值。"""
+    """本地汇总全部问题、裁定状态并生成追问，不采用模型追问。"""
     occupation = _clean_text(candidate.get("occupation"))
-    if occupation in ("老师", "小学生"):
-        occupation = {"老师": "教师", "小学生": "学生"}[occupation]
-    scene = _clean_text(candidate.get("scene"))
-
+    occupation = {"老师": "教师", "小学生": "学生"}.get(occupation, occupation)
     raw_font = _clean_text(candidate.get("font"))
-    font = FONT_ALIASES.get(raw_font, raw_font)
-    raw_duration = candidate.get("duration_minutes")
-    duration = raw_duration
+    duration = candidate.get("duration_minutes")
     if isinstance(duration, str) and duration.strip().isdigit():
         duration = int(duration.strip())
     if isinstance(duration, bool) or not isinstance(duration, int):
         duration = None
-
-    errors = candidate.get("errors")
-    font_error = _first_error(errors, "font") or (raw_font is not None and font not in FONTS)
-    duration_error = _first_error(errors, "duration_minutes") or (
-        raw_duration is not None and duration not in DURATIONS
-    )
-    if font_error:
-        font = None
-    if duration_error:
-        duration = None
-
-    conflict = candidate.get("status") == "conflict" or (
-        isinstance(errors, list) and any(
-            isinstance(item, dict) and item.get("type") == "conflicting_values"
-            for item in errors
-        )
-    )
-    invalid = (raw_font is not None and FONT_ALIASES.get(raw_font, raw_font) not in FONTS) or (
-        raw_duration is not None and duration not in DURATIONS
-    ) or (isinstance(errors, list) and any(
-        isinstance(item, dict) and item.get("type") != "conflicting_values"
-        for item in errors
-    ))
-    if invalid:
+    values = {
+        "occupation": occupation,
+        "scene": _clean_text(candidate.get("scene")),
+        "font": FONT_ALIASES.get(raw_font, raw_font),
+        "duration_minutes": duration,
+    }
+    errors = _collect_errors(candidate, values)
+    error_types = {item["type"] for item in errors}
+    if error_types - {"missing_field", "conflicting_values"}:
         status = "invalid"
-    elif conflict:
+    elif "conflicting_values" in error_types:
         status = "conflict"
-    elif candidate.get("status") == "invalid":
-        status = "invalid"
-    elif font is None or duration is None or (occupation is None and scene is None):
+    elif errors:
         status = "needs_clarification"
     else:
         status = "complete"
 
-    if status == "complete":
+    messages = [_error_message(item) for item in errors]
+    if not messages:
         message = "ok"
+    elif len(messages) == 1:
+        message = messages[0]
     else:
-        follow_up = _clean_text(candidate.get("follow_up"))
-        if font_error or font is None:
-            fallback = "你想练哪种书体？目前支持楷书、行书或行楷。"
-        elif duration_error or duration is None:
-            fallback = "你每次想练几分钟？目前支持5、15或30分钟。"
-        elif occupation is None and scene is None:
-            fallback = "你是什么职业，或者主要在哪种场景练字？"
-        else:
-            fallback = "信息有冲突，请确认本次的书体和练习时长。"
-        message = follow_up or fallback
-
-    return ParsedRequirementV2(
-        occupation=occupation,
-        scene=scene,
-        font=font,
-        duration_minutes=duration,
-        status=status,
-    ), message
+        message = "请补充或修改以下信息：" + " ".join(
+            f"{index}. {text}" for index, text in enumerate(messages, 1)
+        )
+    return ParsedRequirementV2(**values, status=status), message
 
 
 def parse_text_v2(
