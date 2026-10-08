@@ -1,5 +1,28 @@
 # 接口说明
 
+## 后端追问联调：v2
+
+后端负责生成和保存 `session_id`、保留用户各轮回答，并在每轮回答后调用本服务。
+本服务不保存会话；`POST /parse/v2` 只接收合并后的完整用户信息：
+
+```json
+{"text": "我是学生。想练楷书。每次练15分钟，用于写作业。"}
+```
+
+信息完整时返回 HTTP 200：
+
+```json
+{"code": 0, "message": "ok", "data": {"occupation": "学生", "scene": "写作业", "font": "楷书", "duration_minutes": 15, "status": "complete"}}
+```
+
+缺少信息、冲突或非法值时仍返回 HTTP 200，但业务 `code` 为 400，`message` 为本轮追问，`data` 为 null。
+例如只提供“我是学生”时会追问书体。只有 `status=complete` 的 `data` 可以提交 `POST /plan/v2`。
+`font` 是书体名，仅支持楷书、行书、行楷；计划协议尚使用 `style`，`/plan/v2` 在服务内完成映射。
+解析时长只接受 5、15、30 分钟。模型调用、格式、配置失败分别使用 HTTP 502、422、503，区别于业务追问。
+后端对外的 `/api/nlp/parse`、`session_id` 和窗口展示由后端实现，此服务的 `/parse/v2` 不创建或保存会话。
+
+以下为保留的 v1 接口说明。
+
 [返回 README](../README.md) · [接口说明](api.md) · [解析说明](parsing.md) · [开发指南](development.md) · [验证与待办](verification.md)
 
 ## 请求与响应

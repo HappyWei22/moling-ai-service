@@ -3,11 +3,12 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from ai_service import generate_plan
+from ai_service import generate_plan, generate_plan_v2
 from parsing.errors import ParseConfigError, ParseFormatError, ParseTransportError
 from parsing.parse_requirement import parse_text
+from parsing.parse_requirement_v2 import parse_text_v2
 from requirement_rules import RequirementNotReadyError
-from schemas import UserRequirement, WorksheetPlan
+from schemas import ParsedRequirementV2, UserRequirement, WorksheetPlan
 
 
 app = FastAPI(title="墨灵 AI 调试服务")
@@ -32,6 +33,12 @@ class ParseRequest(BaseModel):
     model_config = {"extra": "forbid"}
 
     text: str = Field(min_length=1, title="用户原话", description="一句自然语言练字需求，例如“我是老师，每天练15分钟，想练楷书”。")
+
+
+class ParseV2Response(BaseModel):
+    code: int
+    message: str
+    data: ParsedRequirementV2 | None
 
 
 PARSE_RESPONSES = {
@@ -121,3 +128,43 @@ def parse_requirement(response: Response, request: ParseRequest):
     response.headers["X-Moling-Model"] = outcome.model
     response.headers["X-Moling-Prompt-Version"] = outcome.prompt_version
     return outcome.requirement
+
+
+@app.post("/parse/v2", response_model=ParseV2Response, responses=PARSE_RESPONSES)
+def parse_requirement_v2(response: Response, request: ParseRequest):
+    """无状态解析；后端须传入已合并的完整会话文本。"""
+    try:
+        outcome = parse_text_v2(request.text)
+    except ParseConfigError as error:
+        raise HTTPException(status_code=503, detail={
+            "code": "PARSE_CONFIG_ERROR", "message": str(error), "fields": [],
+        }) from error
+    except ParseTransportError as error:
+        raise HTTPException(status_code=502, detail={
+            "code": "PARSE_TRANSPORT_ERROR", "message": str(error)[:300], "fields": [],
+        }) from error
+    except ParseFormatError as error:
+        raise HTTPException(status_code=422, detail={
+            "code": "PARSE_FORMAT_ERROR", "message": str(error)[:300], "fields": [],
+        }) from error
+
+    response.headers["X-Moling-Client"] = outcome.client
+    response.headers["X-Moling-Model"] = outcome.model
+    response.headers["X-Moling-Prompt-Version"] = "v2"
+    complete = outcome.requirement.status == "complete"
+    return ParseV2Response(
+        code=0 if complete else 400,
+        message=outcome.message,
+        data=outcome.requirement if complete else None,
+    )
+
+
+@app.post("/plan/v2", response_model=WorksheetPlan,
+          responses={422: {"model": ErrorResponse, "description": "需求未就绪"}})
+def create_plan_v2(requirement: ParsedRequirementV2):
+    try:
+        return generate_plan_v2(requirement)
+    except RequirementNotReadyError as error:
+        raise HTTPException(status_code=422, detail={
+            "code": "REQUIREMENT_NOT_READY", "message": str(error), "fields": [],
+        }) from error

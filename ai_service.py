@@ -3,7 +3,7 @@ from typing import Any
 
 from plan_generators import mock_generate
 from requirement_rules import check_requirement_ready
-from schemas import UserRequirement, WorksheetPlan
+from schemas import ParsedRequirementV2, UserRequirement, WorksheetPlan
 
 
 PlanGenerator = Callable[[UserRequirement], dict[str, Any]]
@@ -23,3 +23,18 @@ def generate_plan(
     if plan.style != expected_style or plan.duration_minutes != expected_duration:
         raise ValueError("生成计划的书体和时长必须与输入需求一致")
     return plan
+
+
+def generate_plan_v2(requirement: ParsedRequirementV2) -> WorksheetPlan:
+    """把新解析协议映射到当前尚使用 style 的计划协议。"""
+    return generate_plan(UserRequirement(
+        occupation=requirement.occupation,
+        scene=requirement.scene,
+        style=requirement.font,
+        duration_minutes=requirement.duration_minutes,
+        goal=None,
+        exclusions=[],
+        status=requirement.status,
+        follow_up=None,
+        errors=[],
+    ))

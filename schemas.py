@@ -29,6 +29,18 @@ class UserRequirement(BaseModel):
     follow_up: str | None
     errors: list[RequirementError]
 
+
+class ParsedRequirementV2(BaseModel):
+    """供后端追问流程使用的精简需求；font 表示书体名。"""
+
+    model_config = {"extra": "forbid"}
+
+    occupation: str | None
+    scene: str | None
+    font: Literal["楷书", "行书", "行楷"] | None
+    duration_minutes: int | None = Field(ge=1, strict=True)
+    status: Literal["complete", "needs_clarification", "conflict", "invalid"]
+
 # 暂定工程规则：每分钟 2.4 个填写字格，尚未经过实际练习校准。
 GRID_BUDGETS = {5: 12, 15: 36, 30: 72}
 

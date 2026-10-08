@@ -105,6 +105,13 @@ python -m uvicorn main:app --reload
 在同一个调试页里，`POST /parse` 接收 `{"text": "我是老师，每天练15分钟，想练楷书。"}`，
 返回解析后的需求对象；业务状态看响应体的 `status`。
 
+后端追问联调使用 `POST /parse/v2`：后端保存 `session_id` 和对话历史，
+每次用户回答后将本次会话的完整用户信息合并为 `text` 传入。解析服务本身无会话状态，
+返回 `occupation`、`scene`、`font`（书体名）、`duration_minutes`、`status`；
+需要追问时响应体的 `code` 为 400，`message` 是追问句，`data` 为 null。
+完成后可把 `data` 提交到 `POST /plan/v2`，计划输出暂沿用 `style` 字段。
+详细示例见[接口说明](docs/api.md)。旧 `/parse` 和 `/plan` 继续用于 v1 联调及历史评测。
+
 ## 按需阅读
 
 | 文档 | 内容 |
