@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import hashlib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from time import perf_counter
 from pathlib import Path
 from typing import Any
 
@@ -27,6 +28,11 @@ class ParseV2Outcome:
     client: str
     model: str
     prompt_sha256: str
+    issues: list[dict[str, Any]] = field(default_factory=list)
+    candidate: dict[str, Any] = field(default_factory=dict)
+    raw_text: str = ""
+    usage: dict[str, Any] | None = None
+    latency_ms: int = 0
 
 
 def _clean_text(value: Any) -> str | None:
@@ -105,7 +111,7 @@ def _error_message(error: dict[str, Any]) -> str:
     return f"{label}存在非法或不支持的内容{detail}，请修改或重新提供。"
 
 
-def finalize_v2(candidate: dict[str, Any]) -> tuple[ParsedRequirementV2, str]:
+def _finalize_v2(candidate: dict[str, Any]) -> tuple[ParsedRequirementV2, str, list[dict[str, Any]]]:
     """本地汇总全部问题、裁定状态并生成追问，不采用模型追问。"""
     occupation = _clean_text(candidate.get("occupation"))
     occupation = {"老师": "教师", "小学生": "学生"}.get(occupation, occupation)
@@ -141,7 +147,12 @@ def finalize_v2(candidate: dict[str, Any]) -> tuple[ParsedRequirementV2, str]:
         message = "请补充或修改以下信息：" + " ".join(
             f"{index}. {text}" for index, text in enumerate(messages, 1)
         )
-    return ParsedRequirementV2(**values, status=status), message
+    return ParsedRequirementV2(**values, status=status), message, errors
+
+
+def finalize_v2(candidate: dict[str, Any]) -> tuple[ParsedRequirementV2, str]:
+    requirement, message, _ = _finalize_v2(candidate)
+    return requirement, message
 
 
 def parse_text_v2(
@@ -154,15 +165,18 @@ def parse_text_v2(
     prompt = PROMPT_PATH.read_text(encoding="utf-8")
     if client is None:
         client = DashScopeChatClient(settings)
+    started = perf_counter()
     response = client.complete(prompt, text.strip())
     candidate = extract_json_object(response.text)
     if not any(key in candidate for key in ("occupation", "scene", "font", "duration_minutes")):
         raise ParseFormatError("模型输出没有任何 v2 需求字段", raw_text=response.text)
-    requirement, message = finalize_v2(candidate)
+    requirement, message, issues = _finalize_v2(candidate)
     return ParseV2Outcome(
         requirement=requirement,
         message=message,
         client=client.name,
         model=response.model,
         prompt_sha256=hashlib.sha256(prompt.encode("utf-8")).hexdigest()[:12],
+        issues=issues, candidate=candidate, raw_text=response.text, usage=response.usage,
+        latency_ms=round((perf_counter() - started) * 1000),
     )

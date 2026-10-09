@@ -176,7 +176,26 @@ curl -X POST http://127.0.0.1:8000/plan/v2 \
 
 ## 旧版评测与更多文档
 
-以下批处理入口仍是 v1，不用于验证新的 v2 汇总追问：
+批量脚本已支持 v2，显式使用 `--protocol v2` 和 v2 标准答案：
+
+```bash
+python -m parsing.run_parse --protocol v2 --client real \
+  --samples v2_eval/samples_v2.jsonl --splits dev,val \
+  --out /tmp/moling-v2-runs.jsonl --report /tmp/moling-v2-report.md
+```
+
+正式样本由建集任务交付。可先使用仓库的两条 smoke 样本验证流程：
+
+```bash
+python -m parsing.run_parse --protocol v2 --client mock \
+  --samples parsing/fixtures/v2_smoke_samples.jsonl \
+  --mock-file parsing/fixtures/v2_smoke_responses.json \
+  --out /tmp/moling-v2-smoke-runs.jsonl --report /tmp/moling-v2-smoke-report.md
+```
+
+v2 检查五字段、模型错误、全部问题及业务响应。追问语义需人工复核，退出码 0 仅表示自动检查通过；mock 不能作为真实模型成绩。详细格式与指标见 [v2 评测集建设任务说明](docs/v2评测集建设任务说明.md)。
+
+以下不带 `--protocol v2` 的历史命令仍使用 v1：
 
 ```bash
 python -m parsing.run_parse --client mock

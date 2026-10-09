@@ -1,0 +1,6 @@
+{
+  "responses": {
+    "每天练-10分钟。": "{\"occupation\": null, \"scene\": null, \"font\": null, \"duration_minutes\": null, \"status\": \"invalid\", \"errors\": [{\"type\": \"invalid_value\", \"field\": \"duration_minutes\", \"value\": -10}]}",
+    "我是学生，楷书，每次15分钟。": "{\"occupation\": \"学生\", \"scene\": null, \"font\": \"楷书\", \"duration_minutes\": 15, \"status\": \"complete\", \"errors\": []}"
+  }
+}

@@ -4,8 +4,10 @@
 
     python -m parsing.run_parse --client mock      # 无需密钥，验证流程
     python -m parsing.run_parse --client real      # 真实模型，需在 .env 配置密钥
+    python -m parsing.run_parse --protocol v2 --samples v2_eval/samples_v2.jsonl --splits dev,val
 
-默认读取 user_requirement/examples_v0.3.json（第 2 周 10 组样例），
+默认协议 v1，读取 user_requirement/examples_v0.3.json（第 2 周 10 组样例）；
+v2 必须显式指定样本，按五字段、模型错误、完整问题集合与追问评分。
 默认写入 parsing/parse_runs.jsonl。退出码：0 全部符合期望，1 有不符合项，2 批次无法运行。
 """
 
@@ -38,6 +40,7 @@ MAX_RAW_CHARS = 2000
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--client", choices=("real", "mock"), default="real", help="调用真实模型或离线固定响应")
+    parser.add_argument("--protocol", choices=("v1", "v2"), default="v1", help="解析与评分协议；默认 v1 兼容历史评测，v2 必须显式指定样本")
     parser.add_argument("--samples", type=Path, default=DEFAULT_SAMPLES, help="样例文件（默认第 2 周 10 组）")
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT, help="运行记录输出路径")
     parser.add_argument("--mock-file", type=Path, default=DEFAULT_MOCK, help="离线固定响应文件")
@@ -313,6 +316,9 @@ def summarize(
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
+    if args.protocol == "v2":
+        from parsing.eval_v2 import main_v2
+        return main_v2(args)
 
     try:
         samples = load_samples(args.samples)
