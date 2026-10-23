@@ -1,0 +1,11 @@
+{
+  "host": "LAPTOP-QO2HEDUA",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "cpu_logical_cores": 18,
+  "gpus": [
+    "NVIDIA GeForce RTX 4060 Laptop GPU, 8188 MiB, 552.46"
+  ],
+  "ram_gb": 23.5,
+  "note": "事后补记（2026-10-23）：两批均在开发笔记本上跑，非组长配置图中的 Xeon W-2223 / 128GB / RTX A4000 16GB。",
+  "hardware_verified_by": "nvidia-smi + os.cpu_count()，2026-10-23"
+}

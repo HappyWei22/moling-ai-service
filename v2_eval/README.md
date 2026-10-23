@@ -61,13 +61,29 @@ v2_eval/
 │   ├── validate_v2.py            # 数量/覆盖/隔离/近重复/清单
 │   └── make_mock_responses.py    # 生成 mock 响应（流程自检用）
 └── baseline/
-    ├── dev_val_runs.jsonl        # ✅ 真实模型 dev/val 运行记录（98 条）
-    ├── dev_val_report.md         # ✅ 真实批次自动报告
+    ├── dev_val_runs.jsonl        # ✅ 云端 qwen3.8-flash dev/val 运行记录（98 条）
+    ├── dev_val_report.md         # ✅ 云端批次自动报告
     ├── 追问人工复核.md            # ✅ 追问语义复核（执行人自审，72 条）
+    ├── local_qwen25_7b_runs.jsonl          # ✅ 本地 7B 批次记录（98 条）
+    ├── local_qwen25_7b_report.md
+    ├── local_qwen25_7b_scenePrompt_runs.jsonl  # 提示词对照实验（非基线）
+    ├── local_qwen25_7b_scenePrompt_report.md
+    ├── local_qwen25_14b_runs.jsonl         # ✅ 本地 14B 批次记录（98 条）
+    ├── local_qwen25_14b_report.md
+    ├── *.device.json             # 各批次硬件快照（上游记录无硬件字段）
+    ├── model_bench.md / .json    # 目标配置（RTX A4000 16GB）可跑模型实测
+    ├── 本地模型对照报告_qwen25-7B.md
+    ├── 本地模型对照报告_qwen25-14B.md
+    ├── 三方对比_云端_7B_14B.md
     ├── mock_dev_val_runs.jsonl   # mock 流程自检记录（非模型效果证据）
     ├── mock_dev_val_report.md
     └── mock_responses_v2.json
 ```
+
+> 本地批次的跑批工具在**仓库根目录** `scripts_local/`（不在 `v2_eval/` 下）：
+> `run_local_ollama.py`（跑批）、`compare_runs.py`（多批次对比）、
+> `bench_local_models.py`（上机前测速）、`_device.py`（硬件快照）、
+> `windows_check.ps1`（Windows 自检）、`A4000_可跑模型评估.md` / `A4000_跑批说明.md`。
 
 ---
 
@@ -167,21 +183,25 @@ python -m parsing.run_parse --protocol v2 --client mock \
 | 迁移说明 | ✅ `v1到v2迁移说明.md`（14 条逐条记录） |
 | 争议裁决 | ✅ 8 项已裁决，3 项待上游确认 |
 | **真实模型 dev/val 批量测试** | ✅ **已完成**（98 条，`qwen3.8-flash`，零技术失败）见 §8 |
+| **本地部署复跑（目标配置）** | ✅ **已完成**（98 条，`qwen2.5:7b` / `qwen2.5:14b`，零技术失败）见 §8.3 |
 | **实际追问人工复核** | ⚠️ **执行人自审已完成**（`baseline/追问人工复核.md`，72 条），**独立双人复核未完成** |
 | **双人交叉复核** | ⚠️ **未完成**（复核人待指定） |
 
-**结论：数据、脚本、真实模型批次三层均已完成。** 唯一未完成项是任务说明 §9 要求的
+**结论：数据、脚本、真实模型批次（云端 + 本地）均已完成。** 唯一未完成项是任务说明 §9 要求的
 **独立双人复核** —— 该项需第二位真人执行，不由本人代为填写。
 
 ---
 
-## 8. 真实模型批次结果（2026-10-09）
+## 8. 真实模型批次结果
+
+本章三批均为真实模型调用：§8.1–8.2 为云端 `qwen3.8-flash`（2026-10-09），
+§8.3 为本地 `qwen2.5` 7B / 14B（2026-10-23）。三批同入口、同样本、同提示词、同评分代码。
+
+### 8.1 云端批次：总体指标
 
 - 批次：`20261009T145849Z-v2-baseline`｜模型：`qwen3.8-flash`｜提示词 SHA256 前 12：`97664f29304a`
 - 样本：`dev_val_runs.jsonl`（dev 63 + val 35 = **98 条**）｜技术失败：**0**
-- 命令：见 `baseline/README` 或本文件 §9 复现段落
-
-### 8.1 总体指标
+- 命令：见 `baseline/README` 或本文件 §10 复现段落
 
 | 指标 | dev | val | 合计 |
 |---|---|---|---|
@@ -201,7 +221,7 @@ python -m parsing.run_parse --protocol v2 --client mock \
 | duration_minutes | 62/63（98.4%） | 35/35（100%） |
 | status | 53/63（84.1%） | 29/35（82.9%） |
 
-### 8.2 关键结论
+### 8.2 云端批次：关键结论
 
 1. **错误放行率 0**（0/71）—— 没有一条含问题的输入被判为 `complete`。安全底线守住。
 2. **「一次汇总全部已识别问题」完全成立** —— 多问题样本统一输出
@@ -219,8 +239,43 @@ python -m parsing.run_parse --protocol v2 --client mock \
 > **证据分层**：本节数字来自**真实模型调用**（A 级证据），可直接作为基线引用。
 > `baseline/mock_*` 是流程自检（C 级），**不可**作为模型效果引用。
 
-**结论：数据与脚本层已完成并通过自动校验；因「双人复核」与「真实模型批次」依赖他人与密钥，
-按 §9 验收条件，整体交付状态应标为「数据就绪，评测未完成」。不得仅凭 mock 退出码 0 宣称通过验收。**
+### 8.3 本地部署复跑（2026-10-23）
+
+目标环境是**本地推理服务器（Windows + RTX A4000 16GB）**，不能调用云端 API。
+模型选型依据：`qwen2.5:14b-instruct-q4_k_m` 权重 9.0 GB，加 4K 上下文 KV 约 11 GB，
+**16 GB 显存可全量上卡**；7B（4.7 GB）作为下界对照。
+
+**与云端批次的可比性**：同一个 `parsing.run_parse` 入口、同一份 `samples_v2.jsonl`（98 条）、
+同一份提示词 `prompt_v2.md`（SHA256 前 12 `97664f29304a`）、同一份评分代码、`temperature=0`。
+**唯一变量是模型**。仅替换 client 工厂，未改上游任何代码。
+
+| 指标 | 云端 `qwen3.8-flash` | 本地 7B | 本地 14B |
+|---|---|---|---|
+| 自动检查全一致 | 47/98（48.0%） | 22/98（22.4%） | **36/98（36.7%）** |
+| 完整问题集合一致 | 76/98（77.6%） | 73/98（74.5%） | 72/98（73.5%） |
+| **错误放行** | 0/71 | 5/71 | **0/71** |
+| 模型错误召回 | 46/69（66.7%） | 21/69（30.4%） | **46/69（66.7%）** |
+| 模型错误精确 | 46/49（93.9%） | 21/23（91.3%） | 46/55（83.6%） |
+| `scene` 准确 | 84/98（85.7%） | 58/98（59.2%） | 74/98（75.5%） |
+| 技术失败 | 0 | 0 | 0 |
+
+**关键结论**
+
+1. **14B 的错误放行归零**（0/71），错误召回 66.7% 追平云端 —— 7B 的硬伤（5 条放行）不复存在。
+2. **`scene` 仍是最弱字段**：应填未填从 39 条降到 23 条，**0 条幻觉**；
+   加一句 scene 定义可把 7B 从 22 → 31/98（对照批次 `*_scenePrompt_*`，非基线）。
+3. **剩余差距集中在 status 判定**：字段准确率已接近云端，但 27 条 `complete` 只判对 21 条
+   （3 条判 conflict、3 条判 invalid）。若这 6 条判对，14B 为 42/98（42.9%）。
+4. **14B 的 `invalid` 更保守**（35/43，云端 29/43）—— 方向安全，但会把部分样本判死。
+5. **速度不能代表目标机**：本轮在开发笔记本 RTX 4060 8GB 上跑，14B 仅 62% 上卡，
+   5.43 s/条；A4000 全量上卡预计 20–30 tok/s（估算，**上机必测**，方法见
+   `scripts_local/bench_local_models.py`）。
+
+> 每批的硬件信息在 `baseline/*.device.json`（上游运行记录不含硬件字段）。
+
+**结论：数据、脚本、云端批次、本地批次四层均已完成。** 三个批次（云端 1 + 本地 2）均为
+真实模型调用、零技术失败，可在同一口径下横向比较。**唯一未完成项仍是 §9 要求的独立双人复核**
+（需第二位真人执行）。不得仅凭 mock 退出码 0 宣称通过验收。
 
 ---
 
@@ -253,6 +308,19 @@ MOLING_LLM_PROMPT_VERSION=v2 python -m parsing.run_parse \
   --protocol v2 --client real --samples v2_eval/samples_v2.jsonl --splits dev,val \
   --out v2_eval/baseline/dev_val_runs.jsonl \
   --report v2_eval/baseline/dev_val_report.md --tag v2-baseline
+
+# 4) 本地 Ollama 批次（无需密钥；运行前确认 ollama 已在 11434 监听）
+python scripts_local/run_local_ollama.py \
+  --model qwen2.5:14b-instruct-q4_k_m --protocol v2 \
+  --samples v2_eval/samples_v2.jsonl --splits dev,val \
+  --out v2_eval/baseline/local_qwen25_14b_runs.jsonl \
+  --report v2_eval/baseline/local_qwen25_14b_report.md --tag local-qwen25-14b
+
+# 5) 多批次对比（口径与 eval_v2 一致）
+python scripts_local/compare_runs.py \
+  --run "云端=v2_eval/baseline/dev_val_runs.jsonl" \
+  --run "7B=v2_eval/baseline/local_qwen25_7b_runs.jsonl" \
+  --run "14B=v2_eval/baseline/local_qwen25_14b_runs.jsonl"
 ```
 
 > `MOLING_LLM_PROMPT_VERSION=v2` **必须显式设置**，否则会静默跑在默认提示词版本上。
