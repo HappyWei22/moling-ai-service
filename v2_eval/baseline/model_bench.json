@@ -1,0 +1,88 @@
+{
+  "generated_at": "2026-10-23T14:25:10+0800",
+  "host": {
+    "host": "LAPTOP-QO2HEDUA",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "cpu_logical_cores": 18,
+    "ram_gb": 23.5,
+    "gpus": [
+      "NVIDIA GeForce RTX 4060 Laptop GPU, 8188 MiB, 552.46"
+    ],
+    "gpu_total_mb": 8188
+  },
+  "gpu_total_mb": 8188,
+  "samples_per_model": 8,
+  "samples_file": "C:\\Users\\罗占勇\\Desktop\\moling-repo-fresh\\v2_eval\\samples_v2.jsonl",
+  "prompt_sha256_prefix": "b8da1e463b7e",
+  "results": [
+    {
+      "model": "qwen2.5:7b-instruct-q4_k_m",
+      "parameter_size": "7.6B",
+      "quantization_level": "Q4_K_M",
+      "family": "qwen2",
+      "context_length": 32768,
+      "load_seconds": 1.21,
+      "size_gb": 4.43,
+      "size_vram_gb": 4.43,
+      "gpu_ratio": 1.0,
+      "samples": 8,
+      "json_compliance": "8/8",
+      "json_compliance_pct": 100.0,
+      "compliance_failures": [],
+      "latency_mean_s": 0.773,
+      "latency_p50_s": 0.771,
+      "latency_max_s": 0.822,
+      "throughput_tok_s": 36.4,
+      "est_full_batch_min": 1.3,
+      "gpu_mem_delta_mb": 0
+    },
+    {
+      "model": "qwen2.5:1.5b-instruct-q4_k_m",
+      "parameter_size": "1.5B",
+      "quantization_level": "Q4_K_M",
+      "family": "qwen2",
+      "context_length": 32768,
+      "load_seconds": 0.16,
+      "size_gb": 1.09,
+      "size_vram_gb": 1.09,
+      "gpu_ratio": 1.0,
+      "samples": 8,
+      "json_compliance": "0/8",
+      "json_compliance_pct": 0.0,
+      "compliance_failures": [
+        "少 ['errors', 'occupation', 'scene', 'status']",
+        "少 ['errors', 'scene', 'status']",
+        "少 ['errors', 'status']"
+      ],
+      "latency_mean_s": 0.182,
+      "latency_p50_s": 0.192,
+      "latency_max_s": 0.215,
+      "throughput_tok_s": 103.6,
+      "est_full_batch_min": 0.3,
+      "gpu_mem_delta_mb": 9
+    },
+    {
+      "model": "qwen2:0.5b",
+      "parameter_size": "494.03M",
+      "quantization_level": "Q4_0",
+      "family": "qwen2",
+      "context_length": 32768,
+      "load_seconds": 0.19,
+      "size_gb": 0.41,
+      "size_vram_gb": 0.41,
+      "gpu_ratio": 1.0,
+      "samples": 8,
+      "json_compliance": "6/8",
+      "json_compliance_pct": 75.0,
+      "compliance_failures": [
+        "少 ['errors', 'status']"
+      ],
+      "latency_mean_s": 0.171,
+      "latency_p50_s": 0.176,
+      "latency_max_s": 0.231,
+      "throughput_tok_s": 216.3,
+      "est_full_batch_min": 0.3,
+      "gpu_mem_delta_mb": -2
+    }
+  ]
+}

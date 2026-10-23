@@ -1,0 +1,12 @@
+{
+  "host": "LAPTOP-QO2HEDUA",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "cpu_logical_cores": 18,
+  "ram_gb": 23.5,
+  "gpus": [
+    "NVIDIA GeForce RTX 4060 Laptop GPU, 8188 MiB, 552.46"
+  ],
+  "gpu_total_mb": 8188,
+  "note": "本批在开发笔记本上跑（8GB 显存，62% 上卡）。模型选型针对组长那台 RTX A4000 16GB，但速度数据不能代表 A4000。",
+  "vram_usage": "62% GPU / 38% CPU (Ollama 报告)"
+}
