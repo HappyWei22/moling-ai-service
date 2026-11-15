@@ -83,7 +83,7 @@ python -m uvicorn main:app --reload
 `try_parse.py` 的 JSON 走 stdout、诊断信息走 stderr，所以 `python try_parse.py "..." 2>/dev/null`
 拿到的就是纯 JSON；不带参数运行会提示交互输入；`--mock` 只认识 `mock_responses.json` 里的 10 条固定输入。
 它还会顺带说明该结果能否直接提交 `POST /plan`：例如“每天练20分钟”会解析成 `complete`，
-但规划入口只接受 5/15/30 分钟，于是提示不能直接生成计划。
+但规划入口只接受 5/15/30/60 分钟，于是提示不能直接生成计划。
 
 常用参数：`--samples` 换样例文件（**JSON 数组或 JSONL 都支持**），`--splits dev,val` 只跑指定分集
 （先于封存检查生效），`--limit 10` 只跑前 N 条，`--out` 换输出路径，`--append` 追加而不是覆盖，
@@ -206,7 +206,7 @@ python -m parsing.run_parse --client real --samples ../moling-W03-3/samples_100.
   届时换 `--samples` 并支持 JSONL 格式后重跑。
 - 注意：裁决 C-01b 之后，这 10 条开发样例里**已没有 conflict 样本**（原 UR-08 改为缺时长追问）；
   conflict 类的评估样本在 W03-3 的 S068(dev)、S069/S070(val)。
-- 解析只判“信息是否够生成”，不判 5/15/30 的业务范围：用户说 20 分钟会解析成 `complete` + `duration_minutes=20`，
+- 解析只判“信息是否够生成”，不判 5/15/30/60 的业务范围：用户说 20 分钟会解析成 `complete` + `duration_minutes=20`，
   由 Planner 决定映射（W02-1 §13 未决问题 2）。
 - 追问话术由本地兜底与提示词共同决定，措辞差异用 `follow_up_check=text_differs` 标注，口径以 W03-3 标注指南为准。
 - 未接通 `/parse` → `/plan` 的自动串联，集成属于 W04-4 / W05-1。

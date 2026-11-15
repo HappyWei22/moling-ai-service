@@ -42,7 +42,8 @@ class ParsedRequirementV2(BaseModel):
     status: Literal["complete", "needs_clarification", "conflict", "invalid"]
 
 # 暂定工程规则：每分钟 2.4 个填写字格，尚未经过实际练习校准。
-GRID_BUDGETS = {5: 12, 15: 36, 30: 72}
+# 60 分钟按同一比例外推为 144 格，产品侧尚未确认是否应拆成两次 30 分钟。
+GRID_BUDGETS = {5: 12, 15: 36, 30: 72, 60: 144}
 
 class WorksheetItem(BaseModel):
     """一项临摹练习：一个连续汉字词组及整组重复次数，不包含评分。"""
@@ -75,7 +76,7 @@ class WorksheetPlan(BaseModel):
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "$comment": (
                 "本文件由 schemas.py 经 export_schemas.py 自动生成，请勿直接编辑。"
-                "总填写字格数须符合 5/15/30 分钟对应 12/36/72 格的暂定规则，"
+                "总填写字格数须符合 5/15/30/60 分钟对应 12/36/72/144 格的暂定规则，"
                 "该跨字段计算由 Python model_validator 校验，未完整表达在 JSON Schema 中。"
                 "配额未经教学验证；输入输出书体、时长的一致性由调用流程保证。"
             ),
@@ -93,8 +94,8 @@ class WorksheetPlan(BaseModel):
     style: Literal["楷书", "行书", "行楷"] = Field(
         title="书体", description="应与需求书体一致；具体字体文件、授权及字形覆盖由渲染端确认。",
     )
-    duration_minutes: Literal[5, 15, 30] = Field(
-        title="目标练习时长", description="单位分钟，应与输入一致；仅支持 5、15、30，不自动映射其他时长。",
+    duration_minutes: Literal[5, 15, 30, 60] = Field(
+        title="目标练习时长", description="单位分钟，应与输入一致；仅支持 5、15、30、60，不自动映射其他时长。",
     )
     is_mock: bool = Field(
         title="是否为模拟数据", description="当前固定候选生成器必须返回 true，不表示已完成个性化选词。",

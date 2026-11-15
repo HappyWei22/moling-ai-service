@@ -3,7 +3,7 @@
   "title": "WorksheetPlan",
   "description": "墨灵 v0.3 临摹练习计划结构，不含 AI 评测或评分。",
   "type": "object",
-  "$comment": "本文件由 schemas.py 经 export_schemas.py 自动生成，请勿直接编辑。总填写字格数须符合 5/15/30 分钟对应 12/36/72 格的暂定规则，该跨字段计算由 Python model_validator 校验，未完整表达在 JSON Schema 中。配额未经教学验证；输入输出书体、时长的一致性由调用流程保证。",
+  "$comment": "本文件由 schemas.py 经 export_schemas.py 自动生成，请勿直接编辑。总填写字格数须符合 5/15/30/60 分钟对应 12/36/72/144 格的暂定规则，该跨字段计算由 Python model_validator 校验，未完整表达在 JSON Schema 中。配额未经教学验证；输入输出书体、时长的一致性由调用流程保证。",
   "$defs": {
     "WorksheetItem": {
       "additionalProperties": false,
@@ -82,11 +82,12 @@
       "type": "string"
     },
     "duration_minutes": {
-      "description": "单位分钟，应与输入一致；仅支持 5、15、30，不自动映射其他时长。",
+      "description": "单位分钟，应与输入一致；仅支持 5、15、30、60，不自动映射其他时长。",
       "enum": [
         5,
         15,
-        30
+        30,
+        60
       ],
       "title": "目标练习时长",
       "type": "integer"

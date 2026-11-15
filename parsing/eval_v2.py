@@ -58,8 +58,8 @@ def validate_samples(samples):
             if set(expected) != set(FIELDS):
                 raise ValueError("expected_requirement 必须且只能含 v2 五字段")
             ParsedRequirementV2.model_validate(expected)
-            if expected["duration_minutes"] not in (None, 5, 15, 30):
-                raise ValueError("标准答案时长只能为 null/5/15/30")
+            if expected["duration_minutes"] not in (None, 5, 15, 30, 60):
+                raise ValueError("标准答案时长只能为 null/5/15/30/60")
             for name in ("expected_model_errors", "expected_issues"):
                 items = sample[name]
                 if not isinstance(items, list):

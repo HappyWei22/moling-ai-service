@@ -18,7 +18,7 @@ from .parse_requirement import extract_json_object
 PROMPT_PATH = Path(__file__).with_name("prompt_v2.md")
 FONTS = {"楷书", "行书", "行楷"}
 FONT_ALIASES = {"楷体": "楷书", "行楷体": "行楷"}
-DURATIONS = {5, 15, 30}
+DURATIONS = {5, 15, 30, 60}
 
 
 @dataclass
@@ -97,7 +97,7 @@ def _error_message(error: dict[str, Any]) -> str:
     if error["type"] == "missing_field":
         return {
             "font": "你想练哪种书体？目前支持楷书、行书或行楷。",
-            "duration_minutes": "你每次想练几分钟？目前支持5、15或30分钟。",
+            "duration_minutes": "你每次想练几分钟？目前支持5、15、30或60分钟。",
             "personalization": "你是什么职业，或者主要在哪种场景使用书写？",
         }.get(field, f"请补充{label}。")
     if error["type"] == "conflicting_values":
@@ -107,7 +107,7 @@ def _error_message(error: dict[str, Any]) -> str:
     if field == "font":
         return f"书体不在支持范围内{detail}，请选择楷书、行书或行楷。"
     if field == "duration_minutes":
-        return f"练习时长不符合要求{detail}，请选择5、15或30分钟。"
+        return f"练习时长不符合要求{detail}，请选择5、15、30或60分钟。"
     return f"{label}存在非法或不支持的内容{detail}，请修改或重新提供。"
 
 

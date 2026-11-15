@@ -64,5 +64,27 @@
         "instruction": "观察范字，注意字的大小和间距。"
       }
     ]
+  },
+  {
+    "schema_version": "0.3",
+    "plan_id": "bb350c93-7795-4500-b40d-8c7ae1eb1ffe",
+    "plan_name": "临摹字帖联调样例",
+    "style": "楷书",
+    "duration_minutes": 60,
+    "is_mock": true,
+    "items": [
+      {
+        "text": "课堂",
+        "repeat": 36,
+        "task_type": "临摹",
+        "instruction": "观察范字，注意字的大小和间距。"
+      },
+      {
+        "text": "学习",
+        "repeat": 36,
+        "task_type": "临摹",
+        "instruction": "观察范字，注意字的大小和间距。"
+      }
+    ]
   }
 ]
